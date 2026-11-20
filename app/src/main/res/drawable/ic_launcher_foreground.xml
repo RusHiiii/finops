@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Logo FinOps : trois grains de riz de taille croissante, inclinés, formant un histogramme
+  montant (le riz + la croissance). Zone sûre de l'icône adaptative : 18..90.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:rotation="18" android:pivotX="38" android:pivotY="65">
+        <path
+            android:fillColor="#B3FFFFFF"
+            android:pathData="M38,55 C43,55 44.5,60 44.5,65 C44.5,70 43,75 38,75 C33,75 31.5,70 31.5,65 C31.5,60 33,55 38,55 Z" />
+    </group>
+    <group android:rotation="18" android:pivotX="54" android:pivotY="58">
+        <path
+            android:fillColor="#D9FFFFFF"
+            android:pathData="M54,42 C60,42 61.5,50 61.5,58 C61.5,66 60,74 54,74 C48,74 46.5,66 46.5,58 C46.5,50 48,42 54,42 Z" />
+    </group>
+    <group android:rotation="18" android:pivotX="70" android:pivotY="50">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M70,28 C77,28 78.5,39 78.5,50 C78.5,61 77,72 70,72 C63,72 61.5,61 61.5,50 C61.5,39 63,28 70,28 Z" />
+        <!-- Sillon du grain -->
+        <path
+            android:strokeColor="#402F6FEB"
+            android:strokeWidth="1.6"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"
+            android:pathData="M70,34 C72.5,42 72.5,58 70,66" />
+    </group>
+</vector>

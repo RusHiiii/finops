@@ -1,0 +1,241 @@
+{
+  "version": 1,
+  "exportedAt": 1795161600000,
+  "portfolios": [
+    {
+      "id": 1,
+      "name": "PEA",
+      "createdAt": 1709280000000
+    },
+    {
+      "id": 2,
+      "name": "CTO",
+      "createdAt": 1714546800000
+    }
+  ],
+  "assets": [
+    {
+      "id": 1,
+      "ticker": "CW8",
+      "exchange": "EPA",
+      "name": "Amundi MSCI World Swap UCITS ETF EUR Acc",
+      "type": "ETF",
+      "currency": "EUR"
+    },
+    {
+      "id": 2,
+      "ticker": "DCAM",
+      "exchange": "EPA",
+      "name": "Amundi PEA Monde (MSCI World) UCITS ETF Acc",
+      "type": "ETF",
+      "currency": "EUR"
+    },
+    {
+      "id": 3,
+      "ticker": "WPEA",
+      "exchange": "EPA",
+      "name": "iShares MSCI World Swap PEA UCITS ETF EUR (Acc)",
+      "type": "ETF",
+      "currency": "EUR"
+    },
+    {
+      "id": 4,
+      "ticker": "IWDA",
+      "exchange": "AMS",
+      "name": "iShares Core MSCI World UCITS ETF USD (Acc)",
+      "type": "ETF",
+      "currency": "EUR"
+    },
+    {
+      "id": 5,
+      "ticker": "AAPL",
+      "exchange": "NASDAQ",
+      "name": "Apple Inc",
+      "type": "STOCK",
+      "currency": "USD"
+    },
+    {
+      "id": 6,
+      "ticker": "VOO",
+      "exchange": "NYSEARCA",
+      "name": "Vanguard S&P 500 ETF",
+      "type": "ETF",
+      "currency": "USD"
+    }
+  ],
+  "transactions": [
+    {
+      "id": 1,
+      "portfolioId": 1,
+      "assetId": 1,
+      "side": "BUY",
+      "quantity": 5.0,
+      "price": 470.0,
+      "fees": 1.99,
+      "date": "2024-03-15"
+    },
+    {
+      "id": 2,
+      "portfolioId": 1,
+      "assetId": 1,
+      "side": "BUY",
+      "quantity": 3.0,
+      "price": 540.0,
+      "fees": 1.99,
+      "date": "2024-11-12"
+    },
+    {
+      "id": 3,
+      "portfolioId": 1,
+      "assetId": 1,
+      "side": "BUY",
+      "quantity": 2.0,
+      "price": 585.0,
+      "fees": 1.99,
+      "date": "2025-06-02"
+    },
+    {
+      "id": 4,
+      "portfolioId": 1,
+      "assetId": 1,
+      "side": "SELL",
+      "quantity": 1.0,
+      "price": 640.0,
+      "fees": 1.99,
+      "date": "2026-02-10"
+    },
+    {
+      "id": 5,
+      "portfolioId": 1,
+      "assetId": 2,
+      "side": "BUY",
+      "quantity": 300.0,
+      "price": 5.1,
+      "fees": 0.99,
+      "date": "2025-01-15"
+    },
+    {
+      "id": 6,
+      "portfolioId": 1,
+      "assetId": 2,
+      "side": "BUY",
+      "quantity": 200.0,
+      "price": 5.55,
+      "fees": 0.99,
+      "date": "2025-09-10"
+    },
+    {
+      "id": 7,
+      "portfolioId": 1,
+      "assetId": 3,
+      "side": "BUY",
+      "quantity": 400.0,
+      "price": 6.2,
+      "fees": 0.99,
+      "date": "2026-03-05"
+    },
+    {
+      "id": 8,
+      "portfolioId": 2,
+      "assetId": 4,
+      "side": "BUY",
+      "quantity": 20.0,
+      "price": 92.5,
+      "fees": 2.0,
+      "date": "2024-05-20"
+    },
+    {
+      "id": 9,
+      "portfolioId": 2,
+      "assetId": 4,
+      "side": "BUY",
+      "quantity": 15.0,
+      "price": 98.3,
+      "fees": 2.0,
+      "date": "2025-04-08"
+    },
+    {
+      "id": 10,
+      "portfolioId": 2,
+      "assetId": 5,
+      "side": "BUY",
+      "quantity": 10.0,
+      "price": 218.0,
+      "fees": 1.0,
+      "date": "2024-08-01"
+    },
+    {
+      "id": 11,
+      "portfolioId": 2,
+      "assetId": 5,
+      "side": "BUY",
+      "quantity": 5.0,
+      "price": 280.0,
+      "fees": 1.0,
+      "date": "2025-12-01"
+    },
+    {
+      "id": 12,
+      "portfolioId": 2,
+      "assetId": 6,
+      "side": "BUY",
+      "quantity": 4.0,
+      "price": 510.0,
+      "fees": 1.0,
+      "date": "2025-03-14"
+    }
+  ],
+  "watchlist": [
+    {
+      "ticker": "MC",
+      "exchange": "EPA",
+      "name": "LVMH Moet Hennessy Louis Vuitton SE",
+      "type": "STOCK",
+      "currency": "EUR",
+      "addedAt": 1788246000000
+    },
+    {
+      "ticker": "NVDA",
+      "exchange": "NASDAQ",
+      "name": "NVIDIA Corp",
+      "type": "STOCK",
+      "currency": "USD",
+      "addedAt": 1790838000000
+    },
+    {
+      "ticker": "WLD",
+      "exchange": "EPA",
+      "name": "Amundi MSCI World Swap II UCITS ETF Dist",
+      "type": "ETF",
+      "currency": "EUR",
+      "addedAt": 1793520000000
+    }
+  ],
+  "isins": [
+    {
+      "ticker": "IWDA",
+      "exchange": "AMS",
+      "isin": "IE00B4L5Y983"
+    },
+    {
+      "ticker": "CW8",
+      "exchange": "EPA",
+      "isin": "LU1681043599"
+    },
+    {
+      "ticker": "AAPL",
+      "exchange": "NASDAQ",
+      "isin": "US0378331005"
+    },
+    {
+      "ticker": "WLD",
+      "exchange": "EPA",
+      "isin": "FR0010315770"
+    },
+    {
+      "ticker": "MC",
+      "exchange": "EPA",
+      "isin": "FR0000121014"
+    }
+  ]
+}

@@ -83,3 +83,14 @@ fun MoneyDisplay.approxSigned(amount: Double, from: String?): String? =
 /** « ≈ 39,84 € » : contre-valeur dans la devise par défaut, ou null si inutile ou taux inconnu. */
 fun MoneyDisplay.approx(amount: Double, from: String?): String? =
     if (converts(from)) "≈ " + format(amount, from) else null
+
+/**
+ * « ≈ 39,84 € » : montant [eur] déjà converti en EUR (taux des transactions) affiché dans la devise par défaut ;
+ * null si [from] est déjà la devise par défaut ou si le montant est inconnu.
+ */
+fun MoneyDisplay.approxEur(eur: Double?, from: String?): String? =
+    if (eur != null && converts(from)) "≈ " + format(eur, CurrencyCode.EUR.name) else null
+
+/** Variante signée de [approxEur]. */
+fun MoneyDisplay.approxSignedEur(eur: Double?, from: String?): String? =
+    if (eur != null && converts(from)) "≈ " + formatSigned(eur, CurrencyCode.EUR.name) else null

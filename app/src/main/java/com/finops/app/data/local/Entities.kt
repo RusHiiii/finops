@@ -57,6 +57,7 @@ data class TransactionEntity(
     val price: Double,
     val fees: Double,
     val date: LocalDate,
+    val usdToEur: Double? = null,
 )
 
 @Entity(tableName = "fx_rates")

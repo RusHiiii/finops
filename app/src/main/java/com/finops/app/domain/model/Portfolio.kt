@@ -32,6 +32,8 @@ data class Transaction(
     val price: Double,
     val fees: Double,
     val date: LocalDate,
+    /** Taux USD/EUR (1 USD = x EUR) à la date de la transaction ; null pour un actif en devise d'affichage ou non saisi. */
+    val usdToEur: Double? = null,
 ) {
     /** Montant décaissé (achat) ou encaissé (vente), frais inclus. */
     val netAmount: Double get() = when (side) {
@@ -52,6 +54,7 @@ data class TransactionDraft(
     val price: Double,
     val fees: Double,
     val date: LocalDate,
+    val usdToEur: Double? = null,
 )
 
 /** Transaction enrichie pour l'affichage d'un historique. */

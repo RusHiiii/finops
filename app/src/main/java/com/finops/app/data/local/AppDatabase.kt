@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [PortfolioEntity::class, AssetEntity::class, TransactionEntity::class, FxRateEntity::class, WatchlistEntity::class, InstrumentIsinEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

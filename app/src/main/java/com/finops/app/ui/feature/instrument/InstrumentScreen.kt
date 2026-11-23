@@ -5,6 +5,8 @@ import com.finops.app.ui.common.stockLogoUrl
 import com.finops.app.ui.common.LocalMoney
 import com.finops.app.ui.common.MoneyDisplay
 import com.finops.app.ui.common.approx
+import com.finops.app.ui.common.approxEur
+import com.finops.app.ui.common.approxSignedEur
 import androidx.compose.runtime.CompositionLocalProvider
 import com.finops.app.ui.common.money
 import com.finops.app.ui.common.signedMoney
@@ -285,12 +287,14 @@ private fun MyPositionCard(h: Holding, display: MoneyDisplay, onClick: () -> Uni
                 display.approx(h.marketValue, ccy)?.let { Caption(it) }
                 Caption(
                     "${h.quantity.formatQuantity()} parts · PRU ${h.averagePrice.money(a.currency)}" +
-                        (display.approx(h.averagePrice, ccy)?.let { " ($it)" } ?: ""),
+                        (display.approxEur(h.averagePriceEur(display.usdToEur), ccy)?.let { " ($it)" } ?: ""),
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
                 SignedAmount(h.unrealizedPnl, a.currency, percent = h.unrealizedPnlPercent)
-                display.approxSigned(h.unrealizedPnl, ccy)?.let { Caption(it) }
+                display.approxSignedEur(h.unrealizedPnlEur(display.usdToEur), ccy)?.let { approx ->
+                    Caption(h.unrealizedPnlPercentEur(display.usdToEur)?.let { "$approx (${it.formatSignedPercent()})" } ?: approx)
+                }
             }
         }
     }

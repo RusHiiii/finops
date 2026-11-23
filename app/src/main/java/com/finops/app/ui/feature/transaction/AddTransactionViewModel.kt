@@ -18,7 +18,12 @@ import com.finops.app.domain.usecase.UpdateTransactionUseCase
 import com.finops.app.domain.model.Transaction
 import com.finops.app.domain.usecase.ObservePortfoliosUseCase
 import com.finops.app.domain.usecase.ObserveSettingsUseCase
+import com.finops.app.domain.usecase.ObserveDisplayCurrencyUseCase
+import com.finops.app.domain.model.DisplayCurrency
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import com.finops.app.ui.common.toDecimalOrNull
 import com.finops.app.ui.common.userMessage
 import com.finops.app.ui.navigation.RouteArgs
@@ -46,6 +51,12 @@ data class TransactionForm(
     val price: String = "",
     val fees: String = "",
     val date: LocalDate,
+    /** Devise d'affichage (par défaut) des montants. */
+    val displayCurrency: CurrencyCode = CurrencyCode.EUR,
+    /** Taux saisi : 1 [currency] = [fxRate] [displayCurrency]. */
+    val fxRate: String = "",
+    /** Devise de l'actif pour laquelle [fxRate] a été rempli (null : à pré-remplir). */
+    val fxFor: CurrencyCode? = null,
     /** Transaction modifiée (null : ajout). */
     val transactionId: Long? = null,
     /** true si l'actif vient d'une position ou d'une fiche : champs de l'actif non modifiables. */
@@ -56,6 +67,9 @@ data class TransactionForm(
     val error: String? = null,
 ) {
     val editing: Boolean get() = transactionId != null
+
+    /** Instrument hors devise d'affichage : taux de conversion à saisir. */
+    val needsFx: Boolean get() = currency != displayCurrency
 
     /** Montant total (frais inclus pour un achat, déduits pour une vente) ; null si saisie incomplète. */
     val total: Double?
@@ -78,6 +92,7 @@ class AddTransactionViewModel @Inject constructor(
     private val updateTransaction: UpdateTransactionUseCase,
     clock: Clock,
     observeSettings: ObserveSettingsUseCase,
+    observeDisplayCurrency: ObserveDisplayCurrencyUseCase,
 ) : ViewModel() {
 
     private val _form = MutableStateFlow(initialForm(savedStateHandle, LocalDate.now(clock)))
@@ -118,6 +133,8 @@ class AddTransactionViewModel @Inject constructor(
                     price = t.price.toPlainString(),
                     fees = t.fees.takeIf { f -> f > 0 }?.toPlainString().orEmpty(),
                     date = t.date,
+                    fxRate = t.usdToEur?.let { u -> rateFromUsdToEur(a?.currency ?: it.currency, it.displayCurrency, u) }?.toRateString().orEmpty(),
+                    fxFor = (a?.currency ?: it.currency).takeIf { t.usdToEur != null },
                     assetLocked = true,
                 )
             }
@@ -142,6 +159,11 @@ class AddTransactionViewModel @Inject constructor(
                 val f = _form.value
                 if (!f.assetLocked && allowed.isNotEmpty() && f.currency !in allowed) _form.update { it.copy(currency = allowed.first()) }
             }
+        }
+        // Taux de conversion pré-rempli au taux actuel (à chaque changement de devise de l'actif ou d'affichage).
+        viewModelScope.launch {
+            combine(_form.map { it.currency }.distinctUntilChanged(), observeDisplayCurrency().filterNotNull()) { _, d -> d }
+                .collect { d -> _form.update { it.withFx(d, original?.usdToEur) } }
         }
         // Un seul portefeuille : présélection.
         viewModelScope.launch {
@@ -192,11 +214,13 @@ class AddTransactionViewModel @Inject constructor(
         val qty = f.quantity.toDecimalOrNull()
         val price = f.price.toDecimalOrNull()
         val fees = f.fees.ifBlank { "0" }.toDecimalOrNull()
+        val fx = if (f.needsFx) f.fxRate.toDecimalOrNull()?.takeIf { it > 0 } else null
         val error = when {
             symbol == null -> "Ticker ou place invalide (ex. CW8 / EPA)"
             qty == null -> "Quantité invalide"
             price == null -> "Prix invalide"
             fees == null -> "Frais invalides"
+            f.needsFx && fx == null -> "Taux de conversion invalide"
             else -> null
         }
         if (error != null) {
@@ -204,11 +228,12 @@ class AddTransactionViewModel @Inject constructor(
             return
         }
         _form.update { it.copy(saving = true) }
+        val usdToEur = fx?.let { if (f.currency == CurrencyCode.USD) it else 1 / it }
         val orig = original
         viewModelScope.launch {
             runSuspendCatching {
                 if (orig != null) updateTransaction(
-                    orig.copy(portfolioId = f.portfolioId, side = f.side, quantity = qty!!, price = price!!, fees = fees!!, date = f.date)
+                    orig.copy(portfolioId = f.portfolioId, side = f.side, quantity = qty!!, price = price!!, fees = fees!!, date = f.date, usdToEur = usdToEur)
                 ) else addTransaction(
                     TransactionDraft(
                         portfolioId = f.portfolioId,
@@ -221,6 +246,7 @@ class AddTransactionViewModel @Inject constructor(
                         price = price!!,
                         fees = fees!!,
                         date = f.date,
+                        usdToEur = usdToEur,
                     )
                 )
             }.onSuccess {
@@ -234,6 +260,28 @@ class AddTransactionViewModel @Inject constructor(
     private companion object {
         /** 12.5 → « 12.5 », 3.0 → « 3 » (pas de notation scientifique). */
         fun Double.toPlainString(): String = java.math.BigDecimal.valueOf(this).stripTrailingZeros().toPlainString()
+
+        /** Taux arrondi à 6 décimales. */
+        fun Double.toRateString(): String =
+            java.math.BigDecimal.valueOf(this).setScale(6, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+
+        /** Taux 1 [from] = x [to] déduit du taux USD/EUR. */
+        fun rateFromUsdToEur(from: CurrencyCode, to: CurrencyCode, usdToEur: Double): Double = when {
+            from == to -> 1.0
+            from == CurrencyCode.USD -> usdToEur
+            else -> 1 / usdToEur
+        }
+
+        /**
+         * Met à jour la devise d'affichage et pré-remplit le taux s'il n'est plus valable :
+         * taux enregistré [stored] de la transaction modifiée, sinon taux actuel.
+         */
+        fun TransactionForm.withFx(d: DisplayCurrency, stored: Double?): TransactionForm {
+            val keep = fxFor == currency && displayCurrency == d.currency && fxRate.isNotBlank()
+            if (keep) return this
+            val current = (stored ?: d.usdToEur)?.let { rateFromUsdToEur(currency, d.currency, it) }
+            return copy(displayCurrency = d.currency, fxRate = current?.toRateString().orEmpty(), fxFor = currency)
+        }
 
         fun initialForm(args: SavedStateHandle, today: LocalDate): TransactionForm {
             val ticker = args.get<String>(RouteArgs.TICKER)

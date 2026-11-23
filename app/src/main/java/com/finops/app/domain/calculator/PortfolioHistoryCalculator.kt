@@ -10,8 +10,9 @@ import java.time.ZoneId
 
 /**
  * Reconstitue la courbe de valeur d'un ensemble de positions à partir de l'historique
- * des cours et des transactions. Le taux USD/EUR courant est appliqué à tout l'historique
- * (approximation : pas d'historique de change).
+ * des cours et des transactions. Valeur : taux USD/EUR courant appliqué à tout l'historique
+ * (approximation : pas d'historique de change). Capital investi : taux de chaque transaction,
+ * taux courant pour celles sans taux saisi.
  */
 object PortfolioHistoryCalculator {
 
@@ -45,7 +46,7 @@ object PortfolioHistoryCalculator {
                 val position = track.positionAt(date)
                 if (position.quantity <= 0.0 && position.cost == 0.0) continue
                 value += position.quantity * track.priceAt(t) * track.rate
-                invested += position.cost * track.rate
+                invested += position.costEur + position.costPending * track.rate
             }
             ValuePoint(t, value, invested)
         }
@@ -65,7 +66,7 @@ object PortfolioHistoryCalculator {
         /** Appels à dates croissantes : parcours incrémental. */
         fun positionAt(date: LocalDate): PortfolioCalculator.Position {
             while (txIndex < transactions.size && !transactions[txIndex].date.isAfter(date)) {
-                position = position.apply(transactions[txIndex++])
+                position = position.apply(transactions[txIndex++], asset.currency)
             }
             return position
         }

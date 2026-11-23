@@ -30,6 +30,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -122,7 +123,7 @@ fun TransactionsScreen(
                                 title = group.month.format(MONTH).replaceFirstChar { it.titlecase(Locale.FRANCE) },
                                 contentPadding = PaddingValues(start = 12.dp, end = 4.dp, top = 16.dp, bottom = 8.dp),
                             ) {
-                                group.entries.forEachIndexed { i, e ->
+                                group.entries.forEachIndexed { i, e -> key(e.transaction.id) {
                                     if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                                     Row(
                                         Modifier.clickable { onOpenHolding(e.portfolio.id, e.asset.id) },
@@ -136,7 +137,7 @@ fun TransactionsScreen(
                                             }
                                         }
                                     }
-                                }
+                                } }
                             }
                         }
                     }

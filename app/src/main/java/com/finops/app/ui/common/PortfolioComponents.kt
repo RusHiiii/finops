@@ -298,21 +298,31 @@ private fun AllocationBars(rows: List<Pair<String, AllocationSlice>>) {
 @Composable
 fun HoldingRow(holding: Holding, weightPercent: Double? = null, onClick: () -> Unit) {
     val a = holding.asset
+    // PRU converti au taux de chaque transaction (pas au taux courant).
+    val display = LocalMoney.current
+    val pru = holding.averagePriceEur(display.usdToEur)
+        ?.takeIf { display.converts(a.currency.name) }
+        ?.let { display.format(it, CurrencyCode.EUR.name) }
+        ?: holding.averagePrice.money(a.currency)
+    // Plus-value en EUR (effet de change inclus) si les montants sont convertis, sinon en devise de l'actif.
+    val eurPnl = holding.unrealizedPnlEur(display.usdToEur)?.takeIf { display.converts(a.currency.name) }
+    val pnl = eurPnl ?: holding.unrealizedPnl
+    val pnlPercent = eurPnl?.let { holding.unrealizedPnlPercentEur(display.usdToEur) } ?: holding.unrealizedPnlPercent
     InstrumentRow(
         ticker = a.symbol.ticker,
         title = a.name,
-        subtitle = "${holding.quantity.formatQuantity()} × ${holding.averagePrice.money(a.currency)}" +
+        subtitle = "${holding.quantity.formatQuantity()} × $pru" +
             (weightPercent?.let { " · " + it.formatPercent() } ?: ""),
         trailingTop = holding.marketValue.money(a.currency),
         trailingBottom = {
             Text(
-                holding.unrealizedPnlPercent.formatSignedPercent(),
+                pnlPercent.formatSignedPercent(),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
-                color = gainLossColor(holding.unrealizedPnl),
+                color = gainLossColor(pnl),
             )
         },
-        trend = holding.unrealizedPnl,
+        trend = pnl,
         onClick = onClick,
         logoUrl = stockLogoUrl(a.symbol, a.type),
     )

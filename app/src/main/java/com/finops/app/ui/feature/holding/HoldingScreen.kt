@@ -6,6 +6,8 @@ import com.finops.app.ui.common.approxSigned
 import com.finops.app.ui.common.LocalMoney
 import com.finops.app.ui.common.OriginalCurrency
 import com.finops.app.ui.common.approx
+import com.finops.app.ui.common.approxEur
+import com.finops.app.ui.common.approxSignedEur
 import com.finops.app.ui.common.money
 import com.finops.app.ui.common.signedMoney
 import androidx.compose.foundation.layout.Arrangement
@@ -146,11 +148,16 @@ fun HoldingScreen(
                                 subtitle = "${a.symbol.display}  ·  ${a.type.label}  ·  ${a.currency}",
                                 amount = h.marketValue.money(a.currency),
                                 convertedAmount = display.approx(h.marketValue, a.currency.name),
-                                changePercent = h.unrealizedPnlPercent.takeIf { h.isOpen },
-                                changeText = "Plus-value latente " + h.unrealizedPnl.signedMoney(a.currency),
+                                // % en EUR (effet de change inclus) quand les montants sont convertis.
+                                changePercent = (
+                                    h.unrealizedPnlPercentEur(display.usdToEur)?.takeIf { display.converts(a.currency.name) }
+                                        ?: h.unrealizedPnlPercent
+                                    ).takeIf { h.isOpen },
+                                changeText = "Plus-value latente " + h.unrealizedPnl.signedMoney(a.currency) +
+                                    (display.approxSignedEur(h.unrealizedPnlEur(display.usdToEur), a.currency.name)?.let { " ($it)" } ?: ""),
                                 footer = listOfNotNull(
                                     "${h.quantity.formatQuantity()} parts · PRU ${h.averagePrice.money(a.currency)}" +
-                                        (display.approx(h.averagePrice, a.currency.name)?.let { " ($it)" } ?: ""),
+                                        (display.approxEur(h.averagePriceEur(display.usdToEur), a.currency.name)?.let { " ($it)" } ?: ""),
                                     a.lastPriceAt?.let { "Cours mis à jour ${it.formatUpdatedAt()}" },
                                 ).joinToString("\n"),
                                 logoUrl = stockLogoUrl(a.symbol, a.type),
@@ -174,16 +181,18 @@ fun HoldingScreen(
                                 StatGrid(
                                     listOf(
                                         Stat("Quantité", h.quantity.formatQuantity()),
-                                        Stat("Prix de revient (PRU)", h.averagePrice.money(a.currency), display.approx(h.averagePrice, ccy)),
+                                        Stat("Prix de revient (PRU)", h.averagePrice.money(a.currency), display.approxEur(h.averagePriceEur(display.usdToEur), ccy)),
                                         Stat("Dernier cours", a.lastPrice?.money(a.currency), a.lastPrice?.let { display.approx(it, ccy) }),
                                         Stat("Variation du jour", h.dayChange?.signedMoney(a.currency), h.dayChange?.let { display.approxSigned(it, ccy) }),
-                                        Stat("Montant investi", h.costBasis.money(a.currency), display.approx(h.costBasis, ccy)),
+                                        Stat("Montant investi", h.costBasis.money(a.currency), display.approxEur(h.costBasisEur(display.usdToEur), ccy)),
                                         Stat(
                                             "Plus-value latente",
                                             h.unrealizedPnl.signedMoney(a.currency) + " (" + h.unrealizedPnlPercent.formatSignedPercent() + ")",
-                                            display.approxSigned(h.unrealizedPnl, ccy),
+                                            display.approxSignedEur(h.unrealizedPnlEur(display.usdToEur), ccy)?.let { approx ->
+                                                h.unrealizedPnlPercentEur(display.usdToEur)?.let { "$approx (${it.formatSignedPercent()})" } ?: approx
+                                            },
                                         ),
-                                        Stat("Plus-value réalisée", h.realizedPnl.signedMoney(a.currency), display.approxSigned(h.realizedPnl, ccy)),
+                                        Stat("Plus-value réalisée", h.realizedPnl.signedMoney(a.currency), display.approxSignedEur(h.realizedPnlEur(display.usdToEur), ccy)),
                                         Stat("Poids", d.weight?.let { (it * 100).formatPercent() }),
                                     )
                                 )

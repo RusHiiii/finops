@@ -13,8 +13,11 @@ object PortfolioCalculator {
 
     fun holding(asset: Asset, transactions: List<Transaction>): Holding {
         var position = Position.EMPTY
-        for (t in sorted(transactions)) position = position.apply(t)
-        return Holding(asset, position.quantity, position.cost, position.realized)
+        for (t in sorted(transactions)) position = position.apply(t, asset.currency)
+        return Holding(
+            asset, position.quantity, position.cost, position.realized,
+            position.costEur, position.costPending, position.realizedEur, position.realizedPending,
+        )
     }
 
     /** Une position par actif ayant au moins une transaction, triées par type puis ticker. */
@@ -48,8 +51,8 @@ object PortfolioCalculator {
                 continue
             }
             value += h.marketValue * rate
-            cost += h.costBasis * rate
-            realized += h.realizedPnl * rate
+            cost += h.costBasisEur(usdToEur) ?: 0.0
+            realized += h.realizedPnlEur(usdToEur) ?: 0.0
             day += (h.dayChange ?: 0.0) * rate
         }
         return PortfolioSummary(value, cost, realized, day, missingFx)
@@ -64,18 +67,57 @@ object PortfolioCalculator {
     internal fun sorted(transactions: List<Transaction>) =
         transactions.sortedWith(compareBy({ it.date }, { it.id }))
 
-    /** État d'une position après application successive des transactions. */
-    internal data class Position(val quantity: Double, val cost: Double, val realized: Double) {
-        fun apply(t: Transaction): Position = when (t.side) {
-            TransactionSide.BUY -> copy(quantity = quantity + t.quantity, cost = cost + t.quantity * t.price + t.fees)
-            TransactionSide.SELL -> {
-                val avg = if (quantity > EPS) cost / quantity else 0.0
-                val removed = avg * t.quantity
-                val qty = quantity - t.quantity
-                if (qty < EPS) {
-                    Position(0.0, 0.0, realized + t.quantity * t.price - t.fees - removed)
-                } else {
-                    Position(qty, cost - removed, realized + t.quantity * t.price - t.fees - removed)
+    /** Taux devise de l'actif → EUR à la date de [t] ; null si non saisi (USD sans taux). */
+    private fun transactionRateToEur(t: Transaction, currency: CurrencyCode): Double? = when (currency) {
+        CurrencyCode.EUR -> 1.0
+        CurrencyCode.USD -> t.usdToEur
+    }
+
+    /**
+     * État d'une position après application successive des transactions.
+     * [cost] et [realized] en devise de l'actif ; leurs contre-valeurs EUR sont scindées en
+     * part convertie au taux de chaque transaction ([costEur], [realizedEur]) et part sans taux saisi,
+     * restée en devise de l'actif et convertie au taux courant ([costPending], [realizedPending]).
+     */
+    internal data class Position(
+        val quantity: Double,
+        val cost: Double,
+        val realized: Double,
+        val costEur: Double = 0.0,
+        val costPending: Double = 0.0,
+        val realizedEur: Double = 0.0,
+        val realizedPending: Double = 0.0,
+    ) {
+        fun apply(t: Transaction, currency: CurrencyCode): Position {
+            val rate = transactionRateToEur(t, currency)
+            return when (t.side) {
+                TransactionSide.BUY -> {
+                    val amount = t.quantity * t.price + t.fees
+                    copy(
+                        quantity = quantity + t.quantity,
+                        cost = cost + amount,
+                        costEur = costEur + (rate?.let { amount * it } ?: 0.0),
+                        costPending = costPending + (if (rate == null) amount else 0.0),
+                    )
+                }
+                TransactionSide.SELL -> {
+                    // Part du coût sortie au PRU, proportionnelle à la quantité vendue.
+                    val share = if (quantity > EPS) t.quantity / quantity else 0.0
+                    val removed = cost * share
+                    val removedEur = costEur * share
+                    val removedPending = costPending * share
+                    val proceeds = t.quantity * t.price - t.fees
+                    val qty = quantity - t.quantity
+                    val closed = qty < EPS
+                    Position(
+                        quantity = if (closed) 0.0 else qty,
+                        cost = if (closed) 0.0 else cost - removed,
+                        realized = realized + proceeds - removed,
+                        costEur = if (closed) 0.0 else costEur - removedEur,
+                        costPending = if (closed) 0.0 else costPending - removedPending,
+                        realizedEur = realizedEur + (rate?.let { proceeds * it } ?: 0.0) - removedEur,
+                        realizedPending = realizedPending + (if (rate == null) proceeds else 0.0) - removedPending,
+                    )
                 }
             }
         }

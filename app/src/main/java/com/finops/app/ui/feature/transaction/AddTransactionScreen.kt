@@ -135,7 +135,7 @@ fun AddTransactionScreen(
                         DecimalField(f.price, { v -> vm.edit { copy(price = v) } }, "Prix unitaire (${f.currency})", Modifier.weight(1f))
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        DecimalField(f.fees, { v -> vm.edit { copy(fees = v) } }, "Frais (${f.currency})", Modifier.weight(1f), ImeAction.Done)
+                        DecimalField(f.fees, { v -> vm.edit { copy(fees = v) } }, "Frais (${f.currency})", Modifier.weight(1f), if (f.needsFx) ImeAction.Next else ImeAction.Done)
                         OutlinedTextField(
                             value = f.date.formatLong(),
                             onValueChange = {},
@@ -146,6 +146,16 @@ fun AddTransactionScreen(
                             },
                             modifier = Modifier.weight(1f),
                         )
+                    }
+                    if (f.needsFx) {
+                        DecimalField(
+                            f.fxRate,
+                            { v -> vm.edit { copy(fxRate = v, fxFor = currency) } },
+                            "Taux ${f.currency} → ${f.displayCurrency}",
+                            Modifier.fillMaxWidth(),
+                            ImeAction.Done,
+                        )
+                        Caption("1 ${f.currency} = ${f.fxRate.ifBlank { "?" }} ${f.displayCurrency} à la date de la transaction (pré-rempli au taux actuel)")
                     }
                 }
             }

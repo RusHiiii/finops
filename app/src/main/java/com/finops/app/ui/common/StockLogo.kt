@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.util.LruCache
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -89,8 +90,11 @@ private object LogoLoader {
 fun rememberLogo(url: String?): ImageBitmap? {
     if (url == null) return null
     val cacheDir = LocalContext.current.cacheDir
-    val bitmap by produceState(LogoLoader.cached(url)?.asImageBitmap(), url) {
-        if (value == null) value = LogoLoader.load(url, cacheDir)?.asImageBitmap()
+    // État rattaché à l'URL : un emplacement réutilisé pour un autre actif ne garde pas l'ancien logo.
+    return key(url) {
+        val bitmap by produceState(LogoLoader.cached(url)?.asImageBitmap(), url) {
+            if (value == null) value = LogoLoader.load(url, cacheDir)?.asImageBitmap()
+        }
+        bitmap
     }
-    return bitmap
 }

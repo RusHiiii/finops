@@ -35,7 +35,7 @@ class RoomBackupRepository @Inject constructor(
             portfolios = dao.portfolios().map { PortfolioDto(it.id, it.name, it.createdAt) },
             assets = dao.assets().map { AssetDto(it.id, it.ticker, it.exchange, it.name, it.type.name, it.currency.name) },
             transactions = dao.transactions().map {
-                TransactionDto(it.id, it.portfolioId, it.assetId, it.side.name, it.quantity, it.price, it.fees, it.date.toString())
+                TransactionDto(it.id, it.portfolioId, it.assetId, it.side.name, it.quantity, it.price, it.fees, it.date.toString(), it.usdToEur)
             },
             watchlist = dao.watchlist().map { WatchlistDto(it.ticker, it.exchange, it.name, it.type?.name, it.currency, it.addedAt) },
             isins = dao.isins().map { IsinDto(it.ticker, it.exchange, it.isin) },
@@ -57,7 +57,7 @@ class RoomBackupRepository @Inject constructor(
                     AssetEntity(it.id, it.ticker, it.exchange, it.name, AssetType.valueOf(it.type), CurrencyCode.valueOf(it.currency), null, null, null)
                 },
                 transactions = backup.transactions.map {
-                    TransactionEntity(it.id, it.portfolioId, it.assetId, TransactionSide.valueOf(it.side), it.quantity, it.price, it.fees, LocalDate.parse(it.date))
+                    TransactionEntity(it.id, it.portfolioId, it.assetId, TransactionSide.valueOf(it.side), it.quantity, it.price, it.fees, LocalDate.parse(it.date), it.usdToEur)
                 },
                 watchlist = backup.watchlist.map {
                     WatchlistEntity(it.ticker, it.exchange, it.name, it.type?.let(AssetType::valueOf), it.currency, null, null, null, it.addedAt)
@@ -144,6 +144,7 @@ private data class TransactionDto(
     val fees: Double,
     /** ISO-8601 (AAAA-MM-JJ). */
     val date: String,
+    val usdToEur: Double? = null,
 )
 
 @Serializable

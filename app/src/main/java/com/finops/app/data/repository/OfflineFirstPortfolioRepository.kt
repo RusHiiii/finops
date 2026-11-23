@@ -84,6 +84,7 @@ class OfflineFirstPortfolioRepository @Inject constructor(
             price = draft.price,
             fees = draft.fees,
             date = draft.date,
+            usdToEur = draft.usdToEur,
         )
         val existing = txDao.getForHolding(draft.portfolioId, assetId).map { it.toDomain() }
         // id max : la nouvelle transaction passe après celles du même jour.

@@ -1,7 +1,11 @@
 package com.finops.app
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.activity.viewModels
+import androidx.fragment.app.FragmentActivity
+import com.finops.app.ui.security.AppLockViewModel
+import com.finops.app.ui.security.LockScreen
+import com.finops.app.ui.security.LockState
 import androidx.activity.compose.setContent
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -16,13 +20,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.finops.app.domain.model.AppSettings
 import com.finops.app.domain.model.ThemeMode
 import com.finops.app.domain.usecase.ObserveSettingsUseCase
+import com.finops.app.domain.usecase.ObserveDisplayCurrencyUseCase
+import com.finops.app.ui.common.LocalMoney
+import com.finops.app.ui.common.MoneyDisplay
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+/** FragmentActivity : requise par BiometricPrompt. */
+class MainActivity : FragmentActivity() {
     @Inject
     lateinit var observeSettings: ObserveSettingsUseCase
+
+    @Inject
+    lateinit var observeDisplayCurrency: ObserveDisplayCurrencyUseCase
+
+    private val appLock: AppLockViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,10 +59,27 @@ class MainActivity : ComponentActivity() {
                 window.decorView.setBackgroundColor(windowBackground(settings.accent, dark).toArgb())
                 onDispose {}
             }
+            val lock by appLock.state.collectAsStateWithLifecycle()
+            val display by observeDisplayCurrency().collectAsStateWithLifecycle(initialValue = null)
+            val money = remember(display) { display?.let { MoneyDisplay(it.currency, it.usdToEur) } ?: MoneyDisplay() }
             FinOpsTheme(darkTheme = dark, accent = settings.accent) {
-                FinOpsApp()
+                when (lock) {
+                    LockState.UNLOCKED -> CompositionLocalProvider(LocalMoney provides money) { FinOpsApp() }
+                    LockState.LOCKED -> LockScreen(onUnlocked = appLock::onUnlocked)
+                    null -> Unit // Préférences en cours de lecture : rien n'est affiché.
+                }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        appLock.onForeground()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) appLock.onBackground()
     }
 
     private companion object {

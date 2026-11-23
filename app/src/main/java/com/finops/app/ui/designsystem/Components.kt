@@ -1,6 +1,12 @@
 package com.finops.app.ui.designsystem
 
+import com.finops.app.ui.common.signedMoney
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +39,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.ContentScale
+import com.finops.app.ui.common.rememberLogo
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +53,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.finops.app.domain.model.CurrencyCode
-import com.finops.app.ui.common.formatSignedMoney
 import com.finops.app.ui.common.formatSignedPercent
 import kotlin.math.abs
 
@@ -94,7 +102,7 @@ fun SignedAmount(
     style: TextStyle = MaterialTheme.typography.bodyMedium,
 ) {
     val pct = percent?.let { " (${it.formatSignedPercent()})" }.orEmpty()
-    Text(amount.formatSignedMoney(currency) + pct, modifier = modifier, color = gainLossColor(amount), style = style)
+    Text(amount.signedMoney(currency) + pct, modifier = modifier, color = gainLossColor(amount), style = style)
 }
 
 /** Carte de section : titre, action optionnelle à droite, contenu. */
@@ -131,9 +139,23 @@ fun SectionAction(text: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(text) }
 }
 
-/** Pastille ronde avec les initiales du ticker, couleur stable dérivée du ticker. */
+/**
+ * Pastille ronde : logo ([logoUrl], actions) sur fond blanc s'il est disponible,
+ * sinon initiales du ticker sur une couleur stable dérivée du ticker.
+ */
 @Composable
-fun AssetAvatar(ticker: String, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+fun AssetAvatar(ticker: String, modifier: Modifier = Modifier, size: Dp = 40.dp, logoUrl: String? = null) {
+    val logo = rememberLogo(logoUrl)
+    if (logo != null) {
+        Box(
+            modifier.size(size).clip(CircleShape).background(Color.White)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(size * 0.68f))
+        }
+        return
+    }
     val palette = FinOpsTheme.finance.chart
     val color = palette[abs(ticker.hashCode()) % palette.size]
     Box(
@@ -162,6 +184,8 @@ fun InstrumentRow(
     /** Signe de la performance : barre verte (≥ 0) ou rouge (< 0) à gauche ; null = pas de barre. */
     trend: Double? = null,
     onClick: (() -> Unit)? = null,
+    /** Logo de l'action (voir [com.finops.app.ui.common.stockLogoUrl]). */
+    logoUrl: String? = null,
 ) {
     Row(
         modifier
@@ -175,7 +199,7 @@ fun InstrumentRow(
             TrendBar(trend)
             Spacer(Modifier.width(8.dp))
         }
-        AssetAvatar(ticker)
+        AssetAvatar(ticker, logoUrl = logoUrl)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -213,15 +237,24 @@ fun KeyValueRow(label: String, value: String, modifier: Modifier = Modifier, val
 
 /** Grille de statistiques en 2 colonnes ; les valeurs nulles sont masquées. */
 @Composable
-fun StatGrid(stats: List<Pair<String, String?>>, modifier: Modifier = Modifier) {
-    val visible = stats.filter { it.second != null }
+fun StatGrid(stats: List<Pair<String, String?>>, modifier: Modifier = Modifier) =
+    StatGrid(stats.map { (label, value) -> Stat(label, value) }, modifier)
+
+/** Statistique : libellé, valeur, et ligne secondaire optionnelle en petit (ex. conversion de devise). */
+data class Stat(val label: String, val value: String?, val secondary: String? = null)
+
+@Composable
+@JvmName("StatGridOfStats")
+fun StatGrid(stats: List<Stat>, modifier: Modifier = Modifier) {
+    val visible = stats.filter { it.value != null }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         visible.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                row.forEach { (label, value) ->
+                row.forEach { stat ->
                     Column(Modifier.weight(1f)) {
-                        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(value!!, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text(stat.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stat.value!!, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        stat.secondary?.let { Caption(it) }
                     }
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -273,7 +306,8 @@ fun Caption(text: String, modifier: Modifier = Modifier, color: Color = Material
 /** Bandeau mis en avant (dégradé bleu) : patrimoine, valeur d'un portefeuille. */
 @Composable
 fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val colors = FinOpsTheme.finance.hero
+    // Dégradé d'accent adouci (éclairci) pour un bandeau moins saturé ; le texte blanc reste lisible.
+    val colors = FinOpsTheme.finance.hero.map { lerp(it, Color.White, HERO_SOFTENING) }
     Column(
         modifier
             .fillMaxWidth()
@@ -285,14 +319,18 @@ fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
     )
 }
 
-/** Variation en % sur fond translucide, pour le [HeroCard]. */
+/**
+ * Variation sur pastille légèrement teintée de vert (hausse) ou de rouge (baisse), pour le [HeroCard].
+ * [text] remplace le % affiché ; le signe de [percent] fixe la couleur.
+ */
 @Composable
-fun HeroChangeBadge(percent: Double, modifier: Modifier = Modifier) {
-    val fg = FinOpsTheme.finance.onHero
+fun HeroChangeBadge(percent: Double, modifier: Modifier = Modifier, text: String? = null) {
+    val fg = Color.White
+    val tint = heroTrendColor(percent)
     Row(
         modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(fg.copy(alpha = 0.18f))
+            .background(tint.copy(alpha = 0.30f))
             .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -300,12 +338,17 @@ fun HeroChangeBadge(percent: Double, modifier: Modifier = Modifier) {
         Icon(
             if (percent >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
             contentDescription = null,
-            tint = fg,
+            tint = tint,
             modifier = Modifier.size(14.dp),
         )
-        Text(percent.formatSignedPercent(), color = fg, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        Text(text ?: percent.formatSignedPercent(), color = fg, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
     }
 }
+
+private const val HERO_SOFTENING = 0.14f
+
+/** Vert / rouge pastel soutenus, lisibles sur le bandeau bleu sans être criards. */
+fun heroTrendColor(value: Double): Color = if (value >= 0) Color(0xFF22C26B) else Color(0xFFF2505F)
 
 /** Barre verticale verte (hausse) ou rouge (baisse). */
 @Composable
@@ -318,4 +361,41 @@ fun TrendBar(value: Double, modifier: Modifier = Modifier) {
             .background(gainLossColor(value))
             .semantics { contentDescription = if (value >= 0) "En hausse" else "En baisse" },
     )
+}
+
+/**
+ * Sélecteur à pastilles défilant horizontalement : pastille choisie pleine (couleur d'accent),
+ * les autres sur fond neutre contrasté. Remplace les FilterChip, peu lisibles sur fond transparent.
+ */
+@Composable
+fun <T> PillSelector(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { o ->
+            val isSelected = o == selected
+            Surface(
+                onClick = { onSelect(o) },
+                shape = CircleShape,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            ) {
+                Text(
+                    label(o),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+    }
 }

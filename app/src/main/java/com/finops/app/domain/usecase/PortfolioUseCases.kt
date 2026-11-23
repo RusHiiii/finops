@@ -106,6 +106,8 @@ data class HoldingDetail(
     val transactions: List<TransactionEntry>,
     /** Poids de la position dans le périmètre (portefeuille ou patrimoine), ∈ [0, 1]. */
     val weight: Double?,
+    /** Conversion devise de l'actif → EUR ; null si indisponible. */
+    val rateToEur: Double?,
 )
 
 class ObserveHoldingDetailUseCase @Inject constructor(private val repository: PortfolioRepository) {
@@ -122,13 +124,15 @@ class ObserveHoldingDetailUseCase @Inject constructor(private val repository: Po
         if (txs.isEmpty()) return@combine null
         val holding = PortfolioCalculator.holding(asset, txs)
         val scopeValue = PortfolioCalculator.summary(PortfolioCalculator.holdings(assets, scope), fx).totalValueEur
-        val holdingValue = PortfolioCalculator.rateToEur(asset.currency, fx)?.let { holding.marketValue * it }
+        val rate = PortfolioCalculator.rateToEur(asset.currency, fx)
+        val holdingValue = rate?.let { holding.marketValue * it }
         val portfoliosById = portfolios.associateBy { it.id }
         HoldingDetail(
             holding = holding,
             transactions = txs.sortedWith(compareByDescending<Transaction> { it.date }.thenByDescending { it.id })
                 .mapNotNull { t -> portfoliosById[t.portfolioId]?.let { TransactionEntry(t, asset, it) } },
             weight = if (holding.isOpen && holdingValue != null && scopeValue > 0) holdingValue / scopeValue else null,
+            rateToEur = rate,
         )
     }
 }

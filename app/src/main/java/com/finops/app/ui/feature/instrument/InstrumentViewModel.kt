@@ -19,6 +19,7 @@ import com.finops.app.domain.usecase.ObserveSettingsUseCase
 import com.finops.app.domain.model.CurrencyCode
 import com.finops.app.domain.usecase.GetPerformancesUseCase
 import com.finops.app.domain.usecase.GetPriceHistoryUseCase
+import com.finops.app.domain.usecase.GetRateToEurUseCase
 import com.finops.app.domain.usecase.ObserveDashboardUseCase
 import com.finops.app.domain.usecase.ObserveIsWatchedUseCase
 import com.finops.app.domain.usecase.ObservePortfoliosUseCase
@@ -61,6 +62,8 @@ data class InstrumentUiState(
     val watched: Boolean = false,
     /** Heure de récupération du cours. */
     val fetchedAt: Long? = null,
+    /** Conversion devise de cotation → EUR (null si EUR ou indisponible). */
+    val rateToEur: Double? = null,
     /** Labels, description, fiche fonds et risques ; chargés après la fiche. */
     val insightsLoading: Boolean = true,
     val insights: InstrumentInsights? = null,
@@ -87,6 +90,7 @@ class InstrumentViewModel @Inject constructor(
     observeIsin: ObserveIsinUseCase,
     private val getInsights: GetInstrumentInsightsUseCase,
     private val linkIsin: LinkIsinUseCase,
+    private val getRateToEur: GetRateToEurUseCase,
     private val clock: Clock,
     observeSettings: ObserveSettingsUseCase,
 ) : ViewModel() {
@@ -101,6 +105,7 @@ class InstrumentViewModel @Inject constructor(
         val error: String? = null,
         val performances: Map<ChartRange, Performance>? = null,
         val fetchedAt: Long? = null,
+        val rateToEur: Double? = null,
     )
 
     private data class Insights(val loading: Boolean = true, val value: InstrumentInsights? = null)
@@ -160,6 +165,7 @@ class InstrumentViewModel @Inject constructor(
             portfolios = e.portfolios,
             watched = e.watched,
             fetchedAt = l.fetchedAt,
+            rateToEur = l.rateToEur,
             insightsLoading = e.insights.loading,
             insights = e.insights.value,
             message = e.message,
@@ -185,6 +191,7 @@ class InstrumentViewModel @Inject constructor(
                         )
                     }
                     if (s != null) {
+                        launch { getRateToEur(s.quote.currency)?.let { r -> load.update { it.copy(rateToEur = r) } } }
                         val perfs = getPerformances(symbol, s.quote.previousClose)
                         load.update { it.copy(performances = perfs) }
                     }

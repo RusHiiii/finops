@@ -1,5 +1,13 @@
 package com.finops.app.ui.feature.instrument
 
+import com.finops.app.ui.common.approxSigned
+import com.finops.app.ui.common.stockLogoUrl
+import com.finops.app.ui.common.LocalMoney
+import com.finops.app.ui.common.MoneyDisplay
+import com.finops.app.ui.common.approx
+import androidx.compose.runtime.CompositionLocalProvider
+import com.finops.app.ui.common.money
+import com.finops.app.ui.common.signedMoney
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -70,7 +78,6 @@ import com.finops.app.ui.common.formatDecimal
 import com.finops.app.ui.common.formatMoney
 import com.finops.app.ui.common.formatPercent
 import com.finops.app.ui.common.formatQuantity
-import com.finops.app.ui.common.formatSignedMoney
 import com.finops.app.ui.common.formatSignedPercent
 import com.finops.app.ui.common.label
 import com.finops.app.ui.designsystem.AssetAvatar
@@ -143,6 +150,9 @@ fun InstrumentScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
+        // Fiche en devise d'origine ; la devise par défaut (taux de la devise de cotation inclus) ne sert qu'au header.
+        val display = LocalMoney.current.withRate(snapshot?.quote?.currency, state.rateToEur)
+        CompositionLocalProvider(LocalMoney provides display.original()) {
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.loading -> LoadingBox()
@@ -157,7 +167,7 @@ fun InstrumentScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item { Header(snapshot, state.insights, state.fetchedAt, state.currencyAllowed) }
+                    item { Header(snapshot, state.insights, state.fetchedAt, state.currencyAllowed, display) }
                     item {
                         PriceChartCard(
                             chart = state.chart,
@@ -176,11 +186,12 @@ fun InstrumentScreen(
                         item { FundInfoCard(state.insights, state.insightsLoading, vm::linkIsin) }
                         state.insights?.fund?.let { f -> item { CompositionCard(f) } }
                     }
-                    state.holding?.let { h -> item { MyPositionCard(h) { onOpenHolding(h.asset.id) } } }
+                    state.holding?.let { h -> item { MyPositionCard(h, display) { onOpenHolding(h.asset.id) } } }
                     item { CharacteristicsCard(snapshot) }
                     snapshot.stats?.description?.let { item { AboutCard(it) } }
                 }
             }
+        }
         }
     }
 
@@ -207,26 +218,23 @@ fun InstrumentScreen(
     }
 }
 
-/** En-tête de fiche dans un bandeau bleu : identité, labels, cours, variation, heure ; puis description. */
+/** En-tête de fiche dans un bandeau bleu : identité, labels, cours, variation, heure. */
 @Composable
-private fun Header(s: InstrumentSnapshot, insights: InstrumentInsights?, fetchedAt: Long?, currencyAllowed: Boolean) {
+private fun Header(s: InstrumentSnapshot, insights: InstrumentInsights?, fetchedAt: Long?, currencyAllowed: Boolean, display: MoneyDisplay) {
     val q = s.quote
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         InstrumentHeroHeader(
             ticker = s.symbol.ticker,
             name = q.name,
             subtitle = listOfNotNull(s.symbol.display, q.type?.label, q.currency).joinToString("  ·  "),
-            amount = q.price.formatMoney(q.currency),
+            amount = q.price.money(q.currency),
+            convertedAmount = display.approx(q.price, q.currency),
             labels = insights?.labels.orEmpty(),
             changePercent = q.changePercent,
-            changeText = q.change?.let { it.formatSignedMoney(q.currency) + " aujourd'hui" },
+            changeText = q.change?.let { it.signedMoney(q.currency) + " aujourd'hui" },
             footer = fetchedAt?.let { "Cours récupéré ${it.formatUpdatedAt()}" },
+            logoUrl = stockLogoUrl(s.symbol, q.type),
         )
-        insights?.summary?.let {
-            SectionCard {
-                Text(it, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
         if (!currencyAllowed) {
             Caption(
                 if (q.currencyCode == null) "Devise ${q.currency ?: "inconnue"} non gérée (EUR / USD uniquement) : ajout au portefeuille impossible."
@@ -267,15 +275,23 @@ private fun PerformancesCard(performances: Map<ChartRange, Performance>?) {
 }
 
 @Composable
-private fun MyPositionCard(h: Holding, onClick: () -> Unit) {
+private fun MyPositionCard(h: Holding, display: MoneyDisplay, onClick: () -> Unit) {
     val a = h.asset
+    val ccy = a.currency.name
     SectionCard(title = "Ma position", modifier = Modifier.clickable(onClick = onClick)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(h.marketValue.formatMoney(a.currency), style = MaterialTheme.typography.titleMedium)
-                Caption("${h.quantity.formatQuantity()} parts · PRU ${h.averagePrice.formatMoney(a.currency)}")
+                Text(h.marketValue.money(a.currency), style = MaterialTheme.typography.titleMedium)
+                display.approx(h.marketValue, ccy)?.let { Caption(it) }
+                Caption(
+                    "${h.quantity.formatQuantity()} parts · PRU ${h.averagePrice.money(a.currency)}" +
+                        (display.approx(h.averagePrice, ccy)?.let { " ($it)" } ?: ""),
+                )
             }
-            SignedAmount(h.unrealizedPnl, a.currency, percent = h.unrealizedPnlPercent)
+            Column(horizontalAlignment = Alignment.End) {
+                SignedAmount(h.unrealizedPnl, a.currency, percent = h.unrealizedPnlPercent)
+                display.approxSigned(h.unrealizedPnl, ccy)?.let { Caption(it) }
+            }
         }
     }
 }
@@ -288,8 +304,8 @@ private fun CharacteristicsCard(s: InstrumentSnapshot) {
     SectionCard(title = "Données de marché") {
         StatGrid(
             listOf(
-                "Clôture précédente" to q.previousClose?.formatMoney(ccy),
-                "Ouverture" to st?.open?.formatMoney(ccy),
+                "Clôture précédente" to q.previousClose?.money(ccy),
+                "Ouverture" to st?.open?.money(ccy),
                 "Plus bas / haut jour" to range(st?.dayLow, st?.dayHigh, ccy),
                 "Plus bas / haut 52 sem." to range(st?.yearLow, st?.yearHigh, ccy),
                 "Volume" to st?.volume?.formatCompact(),
@@ -301,8 +317,9 @@ private fun CharacteristicsCard(s: InstrumentSnapshot) {
     }
 }
 
+@Composable
 private fun range(low: Double?, high: Double?, ccy: String?): String? =
-    if (low == null || high == null) null else "${low.formatMoney(ccy)} – ${high.formatMoney(ccy)}"
+    if (low == null || high == null) null else "${low.money(ccy)} – ${high.money(ccy)}"
 
 @Composable
 private fun AboutCard(description: String) {

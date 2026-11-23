@@ -1,5 +1,7 @@
 package com.finops.app.ui.feature.dashboard
 
+import com.finops.app.ui.common.money
+import com.finops.app.ui.common.signedMoney
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
@@ -7,7 +9,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import com.finops.app.ui.common.formatPercent
-import com.finops.app.ui.common.formatSignedMoney
 import com.finops.app.ui.common.formatUpdatedAt
 import com.finops.app.ui.designsystem.AssetAvatar
 import com.finops.app.ui.designsystem.ChangeBadge
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -76,7 +78,6 @@ import com.finops.app.ui.common.NameDialog
 import com.finops.app.ui.common.PositionsCard
 import com.finops.app.ui.common.SummaryCard
 import com.finops.app.ui.common.ValueHeader
-import com.finops.app.ui.common.formatMoney
 import com.finops.app.ui.common.formatSignedPercent
 import com.finops.app.ui.designsystem.AppWordmark
 import com.finops.app.ui.designsystem.Caption
@@ -92,6 +93,7 @@ fun DashboardScreen(
     onOpenHolding: (Long) -> Unit,
     onAddTransaction: () -> Unit,
     onExplore: () -> Unit,
+    onOpenSettings: () -> Unit,
     vm: DashboardViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -105,6 +107,7 @@ fun DashboardScreen(
         onOpenHolding = onOpenHolding,
         onAddTransaction = onAddTransaction,
         onExplore = onExplore,
+        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -120,6 +123,7 @@ fun DashboardContent(
     onOpenHolding: (Long) -> Unit,
     onAddTransaction: () -> Unit,
     onExplore: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val snackbar = remember { SnackbarHostState() }
     var scrub by remember { mutableStateOf<Int?>(null) }
@@ -141,6 +145,9 @@ fun DashboardContent(
                 actions = {
                     IconButton(onClick = onRefresh, enabled = !state.refreshing) {
                         Icon(Icons.Default.Refresh, contentDescription = "Actualiser les cours")
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Outlined.Settings, contentDescription = "Paramètres")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
@@ -279,13 +286,13 @@ private fun PortfolioTile(p: PortfolioOverview, sharePercent: Double, onClick: (
                         sharePercent.formatPercent(0) + " du patrimoine"
                 )
             }
-            Text(s.totalValueEur.formatMoney(CurrencyCode.EUR), style = MaterialTheme.typography.titleMedium)
+            Text(s.totalValueEur.money(CurrencyCode.EUR), style = MaterialTheme.typography.titleMedium)
         }
         WeightBar(p.weight)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChangeBadge(s.dayChangePercent, prefix = "Jour")
             Text(
-                "PV " + s.unrealizedPnlEur.formatSignedMoney(CurrencyCode.EUR) + " (" + s.unrealizedPnlPercent.formatSignedPercent() + ")",
+                "PV " + s.unrealizedPnlEur.signedMoney(CurrencyCode.EUR) + " (" + s.unrealizedPnlPercent.formatSignedPercent() + ")",
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = gainLossColor(s.unrealizedPnlEur),

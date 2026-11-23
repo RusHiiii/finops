@@ -8,11 +8,11 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.PieChart
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,9 +35,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.finops.app.ui.common.OriginalCurrency
 import com.finops.app.ui.feature.dashboard.DashboardScreen
 import com.finops.app.ui.feature.explore.ExploreScreen
 import com.finops.app.ui.feature.holding.HoldingScreen
+import com.finops.app.ui.feature.news.NewsScreen
 import com.finops.app.ui.feature.instrument.InstrumentScreen
 import com.finops.app.ui.feature.portfolio.PortfolioScreen
 import com.finops.app.ui.feature.transaction.AddTransactionScreen
@@ -53,12 +55,12 @@ private enum class TopLevel(
     val selectedIcon: ImageVector,
     val icon: ImageVector,
 ) {
-    // Ordre d'affichage : Patrimoine au centre, Paramètres tout à droite.
+    // Ordre d'affichage : Patrimoine au centre, Actu tout à droite.
     WATCHLIST(WatchlistRoute, WatchlistRoute::class, "Watchlist", Icons.Filled.Star, Icons.Outlined.StarBorder),
     EXPLORE(ExploreRoute, ExploreRoute::class, "Explorer", Icons.Filled.Explore, Icons.Outlined.Explore),
     WEALTH(DashboardRoute, DashboardRoute::class, "Patrimoine", Icons.Filled.PieChart, Icons.Outlined.PieChart),
     TRANSACTIONS(TransactionsRoute, TransactionsRoute::class, "Transactions", Icons.AutoMirrored.Filled.ReceiptLong, Icons.AutoMirrored.Outlined.ReceiptLong),
-    SETTINGS(SettingsRoute, SettingsRoute::class, "Paramètres", Icons.Filled.Settings, Icons.Outlined.Settings),
+    NEWS(NewsRoute, NewsRoute::class, "Actu", Icons.Filled.Newspaper, Icons.Outlined.Newspaper),
 }
 
 /** Racine de l'UI : barre de navigation (onglets principaux) + graphe de navigation. */
@@ -95,24 +97,33 @@ fun FinOpsApp() {
                     onOpenHolding = { nav.navigate(HoldingRoute(assetId = it)) },
                     onAddTransaction = { nav.navigate(AddTransactionRoute()) },
                     onExplore = { nav.navigateTopLevel(ExploreRoute) },
+                    onOpenSettings = { nav.navigate(SettingsRoute) },
                 )
             }
+            // Listes et fiches : devise d'origine ; seules les vues Patrimoine / portefeuilles convertissent.
             composable<WatchlistRoute> {
-                WatchlistScreen(
+                OriginalCurrency { WatchlistScreen(
+                    onOpenInstrument = { nav.navigate(InstrumentRoute(it.ticker, it.exchange)) },
+                    onExplore = { nav.navigateTopLevel(ExploreRoute) },
+                ) }
+            }
+            composable<TransactionsRoute> {
+                OriginalCurrency { TransactionsScreen(
+                    onAddTransaction = { nav.navigate(AddTransactionRoute()) },
+                    onOpenHolding = { pid, aid -> nav.navigate(HoldingRoute(assetId = aid, portfolioId = pid)) },
+                    onEditTransaction = { nav.navigate(AddTransactionRoute(transactionId = it)) },
+                ) }
+            }
+            composable<ExploreRoute> {
+                OriginalCurrency { ExploreScreen(onOpenInstrument = { nav.navigate(InstrumentRoute(it.ticker, it.exchange)) }) }
+            }
+            composable<NewsRoute> {
+                NewsScreen(
                     onOpenInstrument = { nav.navigate(InstrumentRoute(it.ticker, it.exchange)) },
                     onExplore = { nav.navigateTopLevel(ExploreRoute) },
                 )
             }
-            composable<TransactionsRoute> {
-                TransactionsScreen(
-                    onAddTransaction = { nav.navigate(AddTransactionRoute()) },
-                    onOpenHolding = { pid, aid -> nav.navigate(HoldingRoute(assetId = aid, portfolioId = pid)) },
-                )
-            }
-            composable<ExploreRoute> {
-                ExploreScreen(onOpenInstrument = { nav.navigate(InstrumentRoute(it.ticker, it.exchange)) })
-            }
-            composable<SettingsRoute> { SettingsScreen() }
+            composable<SettingsRoute> { SettingsScreen(onBack = { nav.popBackStack() }) }
             composable<PortfolioRoute> {
                 PortfolioScreen(
                     onBack = { nav.popBackStack() },
@@ -125,6 +136,7 @@ fun FinOpsApp() {
                     onBack = { nav.popBackStack() },
                     onOpenInstrument = { nav.navigate(InstrumentRoute(it.ticker, it.exchange)) },
                     onAddTransaction = { pid, aid -> nav.navigate(AddTransactionRoute(portfolioId = pid ?: RouteArgs.ALL, assetId = aid)) },
+                    onEditTransaction = { nav.navigate(AddTransactionRoute(transactionId = it)) },
                 )
             }
             composable<InstrumentRoute> {

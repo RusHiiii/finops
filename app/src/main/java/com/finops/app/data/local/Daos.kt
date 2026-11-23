@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -58,8 +59,14 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE portfolioId = :portfolioId AND assetId = :assetId")
     suspend fun getForHolding(portfolioId: Long, assetId: Long): List<TransactionEntity>
 
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    suspend fun getById(id: Long): TransactionEntity?
+
     @Insert
     suspend fun insert(tx: TransactionEntity): Long
+
+    @Update
+    suspend fun update(tx: TransactionEntity)
 
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteById(id: Long)

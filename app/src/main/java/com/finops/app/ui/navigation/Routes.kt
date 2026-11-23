@@ -21,6 +21,9 @@ data object ExploreRoute
 data object SettingsRoute
 
 @Serializable
+data object NewsRoute
+
+@Serializable
 data class PortfolioRoute(val portfolioId: Long)
 
 /** [portfolioId] = [RouteArgs.ALL] : position consolidée tous portefeuilles. */
@@ -33,7 +36,7 @@ data class InstrumentRoute(val ticker: String, val exchange: String)
 /**
  * Saisie d'une transaction. Pré-remplissage optionnel depuis un portefeuille ([portfolioId]),
  * une position ([assetId]) ou une fiche instrument (ticker, exchange, name, type, currency, price).
- * [type], [currency] et [side] = noms d'enum.
+ * [type], [currency] et [side] = noms d'enum. [transactionId] ≠ [RouteArgs.ALL] : modification de cette transaction.
  */
 @Serializable
 data class AddTransactionRoute(
@@ -46,6 +49,7 @@ data class AddTransactionRoute(
     val currency: String? = null,
     val price: String? = null,
     val side: String? = null,
+    val transactionId: Long = RouteArgs.ALL,
 )
 
 object RouteArgs {
@@ -59,4 +63,5 @@ object RouteArgs {
     const val CURRENCY = "currency"
     const val PRICE = "price"
     const val SIDE = "side"
+    const val TRANSACTION_ID = "transactionId"
 }

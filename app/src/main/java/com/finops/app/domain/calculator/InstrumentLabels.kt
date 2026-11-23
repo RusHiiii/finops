@@ -54,17 +54,4 @@ object InstrumentLabels {
                 if (it.weightPercent > SECTOR_FUND_THRESHOLD) short(it.name) else "Multi-secteurs"
             }
         }
-
-    /** Description courte : indice et univers pour un ETF, secteur et activité pour une action. */
-    fun summary(snapshot: InstrumentSnapshot, fund: FundProfile?): String? {
-        val company = snapshot.stats?.company
-        return when {
-            fund?.indexName != null ->
-                "ETF qui réplique l'indice ${fund.indexName}" + (fund.investmentFocus?.let { " (${it.lowercase()})" } ?: "") +
-                    (fund.terPercent?.let { ", frais de ${"%.2f".format(java.util.Locale.FRANCE, it)} % par an." } ?: ".")
-            snapshot.quote.type == AssetType.STOCK && company?.industry != null ->
-                "Entreprise du secteur ${Classification.sector(company.sector).lowercase()}, activité : ${company.industry.lowercase()}."
-            else -> snapshot.stats?.description?.substringBefore(". ")?.takeIf { it.isNotBlank() }?.let { "$it." }
-        }
-    }
 }

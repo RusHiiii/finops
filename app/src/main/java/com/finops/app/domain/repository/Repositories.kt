@@ -5,6 +5,8 @@ import com.finops.app.domain.model.Asset
 import com.finops.app.domain.model.BackupSummary
 import com.finops.app.domain.model.ChartRange
 import com.finops.app.domain.model.CurrencyCode
+import com.finops.app.domain.model.EarningsEvent
+import com.finops.app.domain.model.NewsArticle
 import com.finops.app.domain.model.FundProfile
 import com.finops.app.domain.model.InstrumentQuote
 import com.finops.app.domain.model.Isin
@@ -17,6 +19,7 @@ import com.finops.app.domain.model.Transaction
 import com.finops.app.domain.model.TransactionDraft
 import com.finops.app.domain.model.WatchlistItem
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 
 /** Données locales de l'utilisateur (source de vérité, hors ligne). */
 interface PortfolioRepository {
@@ -44,6 +47,14 @@ interface PortfolioRepository {
      */
     suspend fun addTransaction(draft: TransactionDraft): Long
 
+    suspend fun getTransaction(id: Long): Transaction?
+
+    /**
+     * Modifie une transaction existante (même actif ; portefeuille modifiable).
+     * @throws com.finops.app.domain.model.ValidationException si des ventes deviennent incohérentes.
+     */
+    suspend fun updateTransaction(transaction: Transaction)
+
     /** @throws com.finops.app.domain.model.ValidationException si des ventes deviennent incohérentes. */
     suspend fun deleteTransaction(transaction: Transaction)
 
@@ -63,7 +74,10 @@ interface MarketRepository {
     suspend fun search(query: String): List<SearchResult>
 
     /** 1 [from] = x [to]. */
-    suspend fun fxRate(from: CurrencyCode, to: CurrencyCode): Double
+    suspend fun fxRate(from: CurrencyCode, to: CurrencyCode): Double = fxRate(from.name, to.name)
+
+    /** 1 [from] = x [to], codes ISO quelconques (ex. « GBP »). */
+    suspend fun fxRate(from: String, to: String): Double
 }
 
 /** Instruments suivis par l'utilisateur (stockage local). */
@@ -113,4 +127,22 @@ interface BackupRepository {
 interface DocumentStorage {
     suspend fun write(uri: String, content: String)
     suspend fun read(uri: String): String
+}
+
+/** Actualités boursières Boursorama et Fortuneo (via Google Actualités). Lève [com.finops.app.domain.model.MarketDataException]. */
+interface NewsRepository {
+    /** Plus récentes en premier. */
+    suspend fun marketNews(): List<NewsArticle>
+}
+
+/** Calendrier des résultats des sociétés américaines (Nasdaq). Lève [com.finops.app.domain.model.MarketDataException]. */
+interface EarningsRepository {
+    /** Publications entre [from] et [to] inclus. */
+    suspend fun calendar(from: LocalDate, to: LocalDate): List<EarningsEvent>
+}
+
+/** Planification du rappel quotidien des publications de résultats (tâche de fond). */
+interface EarningsReminderScheduler {
+    fun schedule()
+    fun cancel()
 }

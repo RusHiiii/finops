@@ -1,5 +1,7 @@
 package com.finops.app.ui.feature.explore
 
+import com.finops.app.ui.common.money
+import com.finops.app.ui.common.stockLogoUrl
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.finops.app.domain.model.Symbol
-import com.finops.app.ui.common.formatMoney
 import com.finops.app.ui.common.formatSignedPercent
 import com.finops.app.ui.common.label
 import com.finops.app.ui.designsystem.Caption
@@ -100,6 +101,7 @@ fun ExploreScreen(
                                 title = s.name,
                                 subtitle = s.symbol.display,
                                 onClick = { onOpenInstrument(s.symbol) },
+                                logoUrl = stockLogoUrl(s.symbol, s.type),
                             )
                         }
                     }
@@ -111,7 +113,8 @@ fun ExploreScreen(
                             ticker = r.symbol.ticker,
                             title = r.name,
                             subtitle = listOfNotNull(r.symbol.display, r.type?.label).joinToString(" · "),
-                            trailingTop = r.price?.formatMoney(r.currency),
+                            logoUrl = stockLogoUrl(r.symbol, r.type),
+                            trailingTop = r.price?.money(r.currency),
                             trailingBottom = r.changePercent?.let { pct ->
                                 {
                                     Text(

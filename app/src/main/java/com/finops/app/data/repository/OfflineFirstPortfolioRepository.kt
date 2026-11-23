@@ -93,6 +93,23 @@ class OfflineFirstPortfolioRepository @Inject constructor(
         txDao.insert(tx.toEntity())
     }
 
+    override suspend fun getTransaction(id: Long): Transaction? = txDao.getById(id)?.toDomain()
+
+    override suspend fun updateTransaction(transaction: Transaction) {
+        db.withTransaction {
+            val old = txDao.getById(transaction.id)?.toDomain() ?: throw ValidationException("Transaction introuvable")
+            val target = txDao.getForHolding(transaction.portfolioId, transaction.assetId)
+                .map { it.toDomain() }
+                .filter { it.id != transaction.id }
+            val source = if (old.portfolioId == transaction.portfolioId) emptyList()
+            else txDao.getForHolding(old.portfolioId, old.assetId).map { it.toDomain() }.filter { it.id != transaction.id }
+            if (!PortfolioCalculator.isConsistent(target + transaction) || !PortfolioCalculator.isConsistent(source)) {
+                throw ValidationException("Modification impossible : des ventes dépasseraient la quantité détenue")
+            }
+            txDao.update(transaction.toEntity())
+        }
+    }
+
     override suspend fun deleteTransaction(transaction: Transaction) {
         db.withTransaction {
             val remaining = txDao.getForHolding(transaction.portfolioId, transaction.assetId)

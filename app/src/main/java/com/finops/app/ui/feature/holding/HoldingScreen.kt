@@ -1,5 +1,13 @@
 package com.finops.app.ui.feature.holding
 
+import com.finops.app.ui.designsystem.Stat
+import com.finops.app.ui.common.stockLogoUrl
+import com.finops.app.ui.common.approxSigned
+import com.finops.app.ui.common.LocalMoney
+import com.finops.app.ui.common.OriginalCurrency
+import com.finops.app.ui.common.approx
+import com.finops.app.ui.common.money
+import com.finops.app.ui.common.signedMoney
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.finops.app.domain.model.CurrencyCode
 import com.finops.app.domain.model.Symbol
 import com.finops.app.domain.model.TransactionEntry
 import com.finops.app.domain.model.TransactionSide
@@ -54,7 +63,6 @@ import com.finops.app.ui.common.formatMoney
 import com.finops.app.ui.common.formatPercent
 import com.finops.app.ui.common.formatQuantity
 import com.finops.app.ui.common.formatShort
-import com.finops.app.ui.common.formatSignedMoney
 import com.finops.app.ui.common.formatSignedPercent
 import com.finops.app.ui.common.formatUpdatedAt
 import com.finops.app.ui.common.label
@@ -75,6 +83,7 @@ fun HoldingScreen(
     onBack: () -> Unit,
     onOpenInstrument: (Symbol) -> Unit,
     onAddTransaction: (portfolioId: Long?, assetId: Long) -> Unit,
+    onEditTransaction: (transactionId: Long) -> Unit,
     vm: HoldingViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -116,6 +125,9 @@ fun HoldingScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
+        // Fiche en devise d'origine ; la devise par défaut ne sert qu'au header.
+        val display = LocalMoney.current
+        OriginalCurrency {
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.loading -> LoadingBox()
@@ -132,13 +144,16 @@ fun HoldingScreen(
                                 ticker = a.symbol.ticker,
                                 name = a.name,
                                 subtitle = "${a.symbol.display}  ·  ${a.type.label}  ·  ${a.currency}",
-                                amount = h.marketValue.formatMoney(a.currency),
+                                amount = h.marketValue.money(a.currency),
+                                convertedAmount = display.approx(h.marketValue, a.currency.name),
                                 changePercent = h.unrealizedPnlPercent.takeIf { h.isOpen },
-                                changeText = "Plus-value latente " + h.unrealizedPnl.formatSignedMoney(a.currency),
+                                changeText = "Plus-value latente " + h.unrealizedPnl.signedMoney(a.currency),
                                 footer = listOfNotNull(
-                                    "${h.quantity.formatQuantity()} parts · PRU ${h.averagePrice.formatMoney(a.currency)}",
+                                    "${h.quantity.formatQuantity()} parts · PRU ${h.averagePrice.money(a.currency)}" +
+                                        (display.approx(h.averagePrice, a.currency.name)?.let { " ($it)" } ?: ""),
                                     a.lastPriceAt?.let { "Cours mis à jour ${it.formatUpdatedAt()}" },
                                 ).joinToString("\n"),
+                                logoUrl = stockLogoUrl(a.symbol, a.type),
                             )
                         }
                         item {
@@ -155,16 +170,21 @@ fun HoldingScreen(
                         }
                         item {
                             SectionCard(title = "Ma position") {
+                                val ccy = a.currency.name
                                 StatGrid(
                                     listOf(
-                                        "Quantité" to h.quantity.formatQuantity(),
-                                        "Prix de revient (PRU)" to h.averagePrice.formatMoney(a.currency),
-                                        "Dernier cours" to a.lastPrice?.formatMoney(a.currency),
-                                        "Variation du jour" to h.dayChange?.formatSignedMoney(a.currency),
-                                        "Montant investi" to h.costBasis.formatMoney(a.currency),
-                                        "Plus-value latente" to h.unrealizedPnl.formatSignedMoney(a.currency) + " (" + h.unrealizedPnlPercent.formatSignedPercent() + ")",
-                                        "Plus-value réalisée" to h.realizedPnl.formatSignedMoney(a.currency),
-                                        "Poids" to d.weight?.let { (it * 100).formatPercent() },
+                                        Stat("Quantité", h.quantity.formatQuantity()),
+                                        Stat("Prix de revient (PRU)", h.averagePrice.money(a.currency), display.approx(h.averagePrice, ccy)),
+                                        Stat("Dernier cours", a.lastPrice?.money(a.currency), a.lastPrice?.let { display.approx(it, ccy) }),
+                                        Stat("Variation du jour", h.dayChange?.signedMoney(a.currency), h.dayChange?.let { display.approxSigned(it, ccy) }),
+                                        Stat("Montant investi", h.costBasis.money(a.currency), display.approx(h.costBasis, ccy)),
+                                        Stat(
+                                            "Plus-value latente",
+                                            h.unrealizedPnl.signedMoney(a.currency) + " (" + h.unrealizedPnlPercent.formatSignedPercent() + ")",
+                                            display.approxSigned(h.unrealizedPnl, ccy),
+                                        ),
+                                        Stat("Plus-value réalisée", h.realizedPnl.signedMoney(a.currency), display.approxSigned(h.realizedPnl, ccy)),
+                                        Stat("Poids", d.weight?.let { (it * 100).formatPercent() }),
                                     )
                                 )
                             }
@@ -177,13 +197,14 @@ fun HoldingScreen(
                             ) {
                                 d.transactions.forEachIndexed { i, entry ->
                                     if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                    TransactionLine(entry, showPortfolio = vm.portfolioId == null, onDelete = { toDelete = entry })
+                                    TransactionLine(entry, showPortfolio = vm.portfolioId == null, onEdit = { onEditTransaction(entry.transaction.id) }, onDelete = { toDelete = entry })
                                 }
                             }
                         }
                     }
                 }
             }
+        }
         }
     }
 

@@ -1,6 +1,8 @@
 package com.finops.app.ui.feature.transaction
 
 import androidx.compose.foundation.layout.Arrangement
+import com.finops.app.domain.model.Symbol
+import com.finops.app.ui.common.stockLogoUrl
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -24,7 +25,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -65,6 +66,7 @@ import com.finops.app.ui.common.toUtcMillis
 import com.finops.app.ui.common.utcMillisToLocalDate
 import com.finops.app.ui.designsystem.AssetAvatar
 import com.finops.app.ui.designsystem.Caption
+import com.finops.app.ui.designsystem.PillSelector
 import com.finops.app.ui.designsystem.SectionCard
 import java.time.LocalDate
 
@@ -84,7 +86,7 @@ fun AddTransactionScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("Nouvelle transaction") },
+                title = { Text(if (f.editing) "Modifier la transaction" else "Nouvelle transaction") },
                 navigationIcon = { IconButton(onClick = onDone) { Icon(Icons.Default.Close, contentDescription = "Fermer") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
             )
@@ -104,6 +106,7 @@ fun AddTransactionScreen(
                 selected = f.side,
                 label = { it.label },
                 onSelect = { s -> vm.edit { copy(side = s) } },
+                activeColors = { side -> side.pastel },
             )
 
             if (portfolios.size > 1) {
@@ -113,7 +116,7 @@ fun AddTransactionScreen(
             SectionCard(title = "Instrument") {
                 if (f.assetLocked) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        AssetAvatar(f.ticker)
+                        AssetAvatar(f.ticker, logoUrl = stockLogoUrl(Symbol(f.ticker, f.exchange), f.type))
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text(f.name.ifBlank { f.ticker }, style = MaterialTheme.typography.bodyLarge)
@@ -168,7 +171,7 @@ fun AddTransactionScreen(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) {
                 if (f.saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Text("Enregistrer ${f.side.label.lowercase()}")
+                else Text(if (f.editing) "Enregistrer les modifications" else "Enregistrer ${f.side.label.lowercase()}")
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -240,24 +243,41 @@ private fun AssetFields(f: TransactionForm, vm: AddTransactionViewModel) {
 @Composable
 private fun PortfolioPicker(portfolios: List<Portfolio>, selected: Long, onSelect: (Long) -> Unit) {
     Column {
-        Caption("Portefeuille", Modifier.padding(bottom = 4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-            portfolios.forEach { p ->
-                FilterChip(selected = p.id == selected, onClick = { onSelect(p.id) }, label = { Text(p.name) })
-            }
-        }
+        Caption("Portefeuille", Modifier.padding(bottom = 6.dp))
+        PillSelector(portfolios.map { it.id }, selected, { id -> portfolios.first { it.id == id }.name }, onSelect)
     }
 }
 
+/** Achat vert pastel, vente rouge pastel (fond, texte) ; teintes sourdes en thème sombre. */
+private val TransactionSide.pastel: Pair<Color, Color>
+    @Composable get() {
+        val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        return when (this) {
+            TransactionSide.BUY -> if (dark) Color(0xFF1F4D3A) to Color(0xFFB7F0D2) else Color(0xFFCDEFDC) to Color(0xFF0B5D3F)
+            TransactionSide.SELL -> if (dark) Color(0xFF5A2A32) to Color(0xFFFFCCD3) else Color(0xFFFAD4D9) to Color(0xFF8E1B2C)
+        }
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun <T> SegmentedChoice(options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
+private fun <T> SegmentedChoice(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    /** Couleurs (fond, texte) de l'option sélectionnée ; null = couleurs par défaut. */
+    activeColors: (@Composable (T) -> Pair<Color, Color>)? = null,
+    onSelect: (T) -> Unit,
+) {
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         options.forEachIndexed { i, o ->
+            val colors = activeColors?.invoke(o)?.let { (bg, fg) ->
+                SegmentedButtonDefaults.colors(activeContainerColor = bg, activeContentColor = fg)
+            } ?: SegmentedButtonDefaults.colors()
             SegmentedButton(
                 selected = o == selected,
                 onClick = { onSelect(o) },
                 shape = SegmentedButtonDefaults.itemShape(i, options.size),
+                colors = colors,
             ) { Text(label(o)) }
         }
     }

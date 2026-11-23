@@ -1,5 +1,7 @@
 package com.finops.app.ui.feature.portfolio
 
+import com.finops.app.ui.common.signedMoney
+import com.finops.app.ui.common.stockLogoUrl
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,7 +49,6 @@ import com.finops.app.ui.common.NameDialog
 import com.finops.app.ui.common.PositionsCard
 import com.finops.app.ui.common.SummaryCard
 import com.finops.app.ui.common.ValueHeader
-import com.finops.app.ui.common.formatSignedMoney
 import com.finops.app.ui.common.formatUpdatedAt
 import com.finops.app.ui.designsystem.InstrumentRow
 import com.finops.app.ui.designsystem.LoadingBox
@@ -146,12 +147,13 @@ fun PortfolioScreen(
                                         subtitle = "Plus-value réalisée",
                                         trailingBottom = {
                                             Text(
-                                                h.realizedPnl.formatSignedMoney(h.asset.currency),
+                                                h.realizedPnl.signedMoney(h.asset.currency),
                                                 color = gainLossColor(h.realizedPnl),
                                                 style = MaterialTheme.typography.bodyMedium,
                                             )
                                         },
                                         trend = h.realizedPnl,
+                                        logoUrl = stockLogoUrl(h.asset.symbol, h.asset.type),
                                         onClick = { onOpenHolding(vm.portfolioId, h.asset.id) },
                                     )
                                 }

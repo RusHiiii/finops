@@ -63,6 +63,7 @@ data class ChartPoint(val x: Long, val y: Double)
  * @param secondary seconde courbe en pointillés (ex. capital investi), mêmes abscisses que [points].
  * @param baseline ligne horizontale en pointillés (ex. clôture précédente, PRU).
  * @param baselineText petit libellé affiché au bout de la ligne [baseline] (ex. « Clôture préc. 688,91 € »).
+ * @param secondaryText petit libellé affiché au bout de la courbe [secondary] (ex. « Investi 704,24 € »).
  */
 @Composable
 fun LineChart(
@@ -73,6 +74,7 @@ fun LineChart(
     secondary: List<ChartPoint>? = null,
     baseline: Double? = null,
     baselineText: String? = null,
+    secondaryText: String? = null,
     scrubIndex: Int? = null,
     onScrub: (Int?) -> Unit = {},
     contentDescription: String = "Graphique",
@@ -98,6 +100,10 @@ fun LineChart(
     val labels = remember(ticks) { ticks.map { formatAxis(it) } }
     val axisWidthPx = remember(labels) { labels.maxOf { measurer.measure(it, axisStyle).size.width } }
     val gapPx = with(LocalDensity.current) { 8.dp.toPx() }
+    // Axe des abscisses : quelques dates réparties par index, format selon la durée couverte.
+    val xTicks = remember(points) { xAxisTicks(points) }
+    val xAxisHeightPx = remember(xTicks) { (xTicks.maxOfOrNull { measurer.measure(it.second, axisStyle).size.height } ?: 0) }
+    val xAxisGapPx = with(LocalDensity.current) { 6.dp.toPx() }
     fun plotWidth(total: Float) = (total - axisWidthPx - gapPx).coerceAtLeast(1f)
     /** Zone de tracé à droite de l'axe des ordonnées. */
     val plotLeft = axisWidthPx + gapPx
@@ -129,7 +135,7 @@ fun LineChart(
         val lo = ticks.first()
         val span = (ticks.last() - lo).takeIf { it > 0 } ?: 1.0
         val top = 8.dp.toPx()
-        val h = size.height - top - 8.dp.toPx()
+        val h = size.height - top - xAxisHeightPx - xAxisGapPx - 4.dp.toPx()
         val w = plotWidth(size.width)
         val right = plotLeft + w
         fun x(i: Int) = plotLeft + i.toFloat() / (n - 1) * w
@@ -142,6 +148,17 @@ fun LineChart(
             val layout = measurer.measure(labels[i], axisStyle)
             // Libellés alignés à droite, contre la zone de tracé.
             drawText(layout, topLeft = Offset((axisWidthPx - layout.size.width).toFloat(), ty - layout.size.height / 2f))
+        }
+
+        // Axe des abscisses : trait, graduations et dates centrées (bornées à la zone de tracé).
+        val axisY = top + h
+        drawLine(guide.copy(alpha = 0.6f), Offset(plotLeft, axisY), Offset(right, axisY), strokeWidth = 1.dp.toPx())
+        xTicks.forEach { (i, text) ->
+            val tx = x(i)
+            drawLine(guide.copy(alpha = 0.6f), Offset(tx, axisY), Offset(tx, axisY + 3.dp.toPx()), strokeWidth = 1.dp.toPx())
+            val layout = measurer.measure(text, axisStyle)
+            val lx = (tx - layout.size.width / 2f).coerceIn(plotLeft, right - layout.size.width)
+            drawText(layout, topLeft = Offset(lx, axisY + xAxisGapPx))
         }
 
         baseline?.let {
@@ -172,12 +189,13 @@ fun LineChart(
 
         drawPath(line, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 
-        // Libellé de la ligne de référence, en petit, à droite : au-dessus de la ligne (en dessous si trop près du haut).
-        if (baseline != null && baselineText != null) {
-            val layout = measurer.measure(baselineText, baselineStyle)
+        /** Petit libellé à droite, collé à la hauteur [ly] : au-dessus ([above]) ou en dessous, selon la place disponible. */
+        fun tag(text: String, ly: Float, above: Boolean) {
+            val layout = measurer.measure(text, baselineStyle)
             val pad = 3.dp.toPx()
-            val by = y(baseline)
-            val ty = if (by - layout.size.height - 2 * pad > 0) by - layout.size.height - pad else by + pad
+            val fitsAbove = ly - layout.size.height - 2 * pad > 0
+            val fitsBelow = ly + layout.size.height + 2 * pad < size.height
+            val ty = if (above && fitsAbove || !fitsBelow) ly - layout.size.height - pad else ly + pad
             val tx = right - layout.size.width - pad
             drawRoundRect(
                 background.copy(alpha = 0.85f),
@@ -188,14 +206,46 @@ fun LineChart(
             drawText(layout, topLeft = Offset(tx, ty))
         }
 
+        // Libellés de la ligne de référence et de la courbe secondaire, du côté opposé à la fin de la courbe principale.
+        val lastY = y(points.last().y)
+        if (baseline != null && baselineText != null) tag(baselineText, y(baseline), above = y(baseline) <= lastY + 1)
+        val lastSecondary = secondary?.takeIf { it.size == n }?.last()?.y
+        if (lastSecondary != null && secondaryText != null) tag(secondaryText, y(lastSecondary), above = y(lastSecondary) <= lastY + 1)
+
         scrubIndex?.takeIf { it in points.indices }?.let { i ->
             val cx = x(i)
             val cy = y(points[i].y)
-            drawLine(guide, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = 1.dp.toPx())
+            drawLine(guide, Offset(cx, 0f), Offset(cx, axisY), strokeWidth = 1.dp.toPx())
             drawCircle(background, radius = 7.dp.toPx(), center = Offset(cx, cy))
             drawCircle(color, radius = 5.dp.toPx(), center = Offset(cx, cy))
         }
     }
+}
+
+private val X_TIME = java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.FRANCE)
+private val X_DAY = java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.FRANCE)
+private val X_MONTH = java.time.format.DateTimeFormatter.ofPattern("MMM yy", java.util.Locale.FRANCE)
+private val X_YEAR = java.time.format.DateTimeFormatter.ofPattern("yyyy", java.util.Locale.FRANCE)
+
+/**
+ * Graduations de l'axe des abscisses : (index du point, date) pour [count] points répartis.
+ * Format selon la durée : heure (≤ 2 j), jour (≤ 45 j), mois (≤ 2 ans), année.
+ */
+internal fun xAxisTicks(points: List<ChartPoint>, count: Int = 4): List<Pair<Int, String>> {
+    if (points.size < 2) return emptyList()
+    val spanDays = (points.last().x - points.first().x) / 86_400_000.0
+    val fmt = when {
+        spanDays <= 2 -> X_TIME
+        spanDays <= 45 -> X_DAY
+        spanDays <= 730 -> X_MONTH
+        else -> X_YEAR
+    }
+    val zone = java.time.ZoneId.systemDefault()
+    val last = points.lastIndex
+    return (0 until count).map { k -> (k * last.toDouble() / (count - 1)).roundToInt() }
+        .distinct()
+        .map { i -> i to java.time.Instant.ofEpochMilli(points[i].x).atZone(zone).format(fmt) }
+        .distinctBy { it.second }
 }
 
 /** 3 à 6 graduations « rondes » (pas de 1, 2, 2,5 ou 5 × 10ⁿ) encadrant [min, max]. */

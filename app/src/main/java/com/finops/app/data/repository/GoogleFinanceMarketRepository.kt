@@ -68,10 +68,10 @@ class GoogleFinanceMarketRepository @Inject constructor(
         return GoogleFinanceParser.searchResults(payload).sortedBy(::rank)
     }
 
-    override suspend fun fxRate(from: CurrencyCode, to: CurrencyCode): Double {
+    override suspend fun fxRate(from: String, to: String): Double {
         if (from == to) return 1.0
-        return GoogleFinanceParser.parseQuote(api.quotePage("${from.name}-${to.name}"))?.price
-            ?: throw MarketDataException("Taux introuvable pour ${from.name}/${to.name}")
+        return GoogleFinanceParser.parseQuote(api.quotePage("$from-$to"))?.price
+            ?: throw MarketDataException("Taux introuvable pour $from/$to")
     }
 
     /**

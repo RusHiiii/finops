@@ -1,6 +1,7 @@
 package com.finops.app.ui.feature.transactions
 
 import androidx.compose.foundation.clickable
+import com.finops.app.ui.common.stockLogoUrl
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,13 +13,10 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,6 +49,7 @@ import com.finops.app.ui.designsystem.AssetAvatar
 import com.finops.app.ui.designsystem.Caption
 import com.finops.app.ui.designsystem.LoadingBox
 import com.finops.app.ui.designsystem.MessageBox
+import com.finops.app.ui.designsystem.PillSelector
 import com.finops.app.ui.designsystem.SectionCard
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -62,6 +61,7 @@ private val MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRANCE)
 fun TransactionsScreen(
     onAddTransaction: () -> Unit,
     onOpenHolding: (portfolioId: Long, assetId: Long) -> Unit,
+    onEditTransaction: (transactionId: Long) -> Unit,
     vm: TransactionsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -106,12 +106,14 @@ fun TransactionsScreen(
                 ) {
                     if (state.portfolios.size > 1) {
                         item {
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                item { FilterChip(selected = state.filter == null, onClick = { vm.setFilter(null) }, label = { Text("Tous") }) }
-                                items(state.portfolios, key = { it.id }) { p ->
-                                    FilterChip(selected = state.filter == p.id, onClick = { vm.setFilter(p.id) }, label = { Text(p.name) })
-                                }
-                            }
+                            val names = state.portfolios.associate { it.id to it.name }
+                            PillSelector(
+                                options = listOf<Long?>(null) + state.portfolios.map { it.id },
+                                selected = state.filter,
+                                label = { id -> id?.let(names::get) ?: "Tous" },
+                                onSelect = vm::setFilter,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
                         }
                     }
                     state.months.forEach { group ->
@@ -126,11 +128,11 @@ fun TransactionsScreen(
                                         Modifier.clickable { onOpenHolding(e.portfolio.id, e.asset.id) },
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        AssetAvatar(e.asset.symbol.ticker, size = 36.dp)
+                                        AssetAvatar(e.asset.symbol.ticker, size = 36.dp, logoUrl = stockLogoUrl(e.asset.symbol, e.asset.type))
                                         Box(Modifier.padding(start = 12.dp).weight(1f)) {
                                             androidx.compose.foundation.layout.Column {
                                                 Caption(e.asset.name, Modifier.padding(top = 8.dp))
-                                                TransactionLine(e, showPortfolio = state.portfolios.size > 1, onDelete = { toDelete = e })
+                                                TransactionLine(e, showPortfolio = state.portfolios.size > 1, onEdit = { onEditTransaction(e.transaction.id) }, onDelete = { toDelete = e })
                                             }
                                         }
                                     }

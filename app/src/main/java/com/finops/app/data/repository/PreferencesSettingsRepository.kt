@@ -44,6 +44,9 @@ class PreferencesSettingsRepository @Inject constructor(
             .putString(KEY_RANGE, s.defaultRange.name)
             .putBoolean(KEY_REFRESH, s.refreshOnLaunch)
             .putString(KEY_CURRENCIES, s.currencies.joinToString(",") { it.name })
+            .putBoolean(KEY_NOTIFY_EARNINGS, s.notifyEarnings)
+            .putString(KEY_DISPLAY_CURRENCY, s.displayCurrency.name)
+            .putBoolean(KEY_BIOMETRIC_LOCK, s.biometricLock)
             .apply()
     }
 
@@ -57,6 +60,10 @@ class PreferencesSettingsRepository @Inject constructor(
             currencies = prefs.getString(KEY_CURRENCIES, null)
                 ?.split(',')?.mapNotNull { v -> CurrencyCode.entries.firstOrNull { it.name == v } }?.toSet()
                 ?.takeIf { it.isNotEmpty() } ?: defaults.currencies,
+            notifyEarnings = prefs.getBoolean(KEY_NOTIFY_EARNINGS, defaults.notifyEarnings),
+            displayCurrency = prefs.getString(KEY_DISPLAY_CURRENCY, null)?.let { v -> CurrencyCode.entries.firstOrNull { it.name == v } }
+                ?: defaults.displayCurrency,
+            biometricLock = prefs.getBoolean(KEY_BIOMETRIC_LOCK, defaults.biometricLock),
         )
     }
 
@@ -67,5 +74,8 @@ class PreferencesSettingsRepository @Inject constructor(
         const val KEY_RANGE = "default_range"
         const val KEY_REFRESH = "refresh_on_launch"
         const val KEY_CURRENCIES = "currencies"
+        const val KEY_NOTIFY_EARNINGS = "notify_earnings"
+        const val KEY_DISPLAY_CURRENCY = "display_currency"
+        const val KEY_BIOMETRIC_LOCK = "biometric_lock"
     }
 }

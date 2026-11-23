@@ -92,6 +92,21 @@ class GetInstrumentUseCase @Inject constructor(private val market: MarketReposit
     suspend operator fun invoke(symbol: Symbol): InstrumentSnapshot? = market.snapshot(symbol)
 }
 
+/** Taux de conversion d'une devise de cotation vers l'euro ; null si EUR, devise inconnue ou taux indisponible. */
+class GetRateToEurUseCase @Inject constructor(
+    private val market: MarketRepository,
+    private val portfolios: PortfolioRepository,
+) {
+    suspend operator fun invoke(currency: String?): Double? {
+        val code = currency?.uppercase() ?: return null
+        if (code == "EUR") return null
+        // Londres cote en pence (GBX) : 1 GBX = 0,01 GBP.
+        val (iso, factor) = if (code == "GBX" || currency == "GBp") "GBP" to 0.01 else code to 1.0
+        if (iso == "USD") portfolios.observeUsdToEur().first()?.let { return it }
+        return runSuspendCatching { market.fxRate(iso, "EUR") * factor }.getOrNull()
+    }
+}
+
 class GetPriceHistoryUseCase @Inject constructor(private val market: MarketRepository) {
     suspend operator fun invoke(symbol: Symbol, range: ChartRange): List<PricePoint> = market.history(symbol, range)
 }

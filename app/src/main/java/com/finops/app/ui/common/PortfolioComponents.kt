@@ -1,5 +1,10 @@
 package com.finops.app.ui.common
 
+import com.finops.app.ui.designsystem.ChartPoint
+import com.finops.app.ui.designsystem.heroTrendColor
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
@@ -72,7 +77,7 @@ fun ValueHeader(
     HeroCard {
         Text(label, style = MaterialTheme.typography.labelLarge, color = soft)
         Text(
-            (scrubbed?.y ?: summary.totalValueEur).formatMoney(CurrencyCode.EUR),
+            (scrubbed?.y ?: summary.totalValueEur).money(CurrencyCode.EUR),
             style = HeroAmountStyle,
             color = onHero,
         )
@@ -84,7 +89,7 @@ fun ValueHeader(
             } else {
                 HeroChangeBadge(summary.dayChangePercent)
                 Text(
-                    summary.dayChangeEur.formatSignedMoney(CurrencyCode.EUR) + " aujourd'hui",
+                    summary.dayChangeEur.signedMoney(CurrencyCode.EUR) + " aujourd'hui",
                     style = MaterialTheme.typography.bodyMedium,
                     color = onHero,
                 )
@@ -92,8 +97,12 @@ fun ValueHeader(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "Plus-value latente " + summary.unrealizedPnlEur.formatSignedMoney(CurrencyCode.EUR) +
-                " (" + summary.unrealizedPnlPercent.formatSignedPercent() + ")",
+            buildAnnotatedString {
+                append("Plus-value latente ")
+                withStyle(SpanStyle(color = heroTrendColor(summary.unrealizedPnlEur), fontWeight = FontWeight.SemiBold)) {
+                    append(summary.unrealizedPnlEur.signedMoney(CurrencyCode.EUR) + " (" + summary.unrealizedPnlPercent.formatSignedPercent() + ")")
+                }
+            },
             style = MaterialTheme.typography.bodySmall,
             color = soft,
         )
@@ -115,6 +124,8 @@ fun HistoryChartCard(
 ) {
     val perf = chart.performance
     val color = if (perf == null || perf.isPositive) FinOpsTheme.finance.gain else FinOpsTheme.finance.loss
+    // Valeurs en EUR, tracées dans la devise d'affichage.
+    val eurFactor = LocalMoney.current.factor(CurrencyCode.EUR.name) ?: 1.0
     SectionCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp, horizontal = 12.dp)) {
         when {
             chart.loading -> LoadingBox(height = 220.dp)
@@ -122,9 +133,10 @@ fun HistoryChartCard(
                 Caption(chart.error)
             }
             else -> LineChart(
-                points = chart.points,
+                points = chart.points.scaled(eurFactor),
                 color = color,
-                secondary = chart.secondary,
+                secondary = chart.secondary?.scaled(eurFactor),
+                secondaryText = chart.secondary?.lastOrNull()?.let { "Investi ${it.y.money(CurrencyCode.EUR)}" },
                 scrubIndex = scrubIndex,
                 onScrub = onScrub,
                 contentDescription = "Évolution sur ${range.longLabel}",
@@ -162,11 +174,11 @@ fun SummaryCard(summary: PortfolioSummary) {
     SectionCard(title = "Synthèse") {
         StatGrid(
             listOf(
-                "Valeur actuelle" to summary.totalValueEur.formatMoney(CurrencyCode.EUR),
-                "Montant investi" to summary.totalCostEur.formatMoney(CurrencyCode.EUR),
-                "Plus-value latente" to summary.unrealizedPnlEur.formatSignedMoney(CurrencyCode.EUR) +
+                "Valeur actuelle" to summary.totalValueEur.money(CurrencyCode.EUR),
+                "Montant investi" to summary.totalCostEur.money(CurrencyCode.EUR),
+                "Plus-value latente" to summary.unrealizedPnlEur.signedMoney(CurrencyCode.EUR) +
                     " (" + summary.unrealizedPnlPercent.formatSignedPercent() + ")",
-                "Plus-value réalisée" to summary.realizedPnlEur.formatSignedMoney(CurrencyCode.EUR),
+                "Plus-value réalisée" to summary.realizedPnlEur.signedMoney(CurrencyCode.EUR),
             )
         )
     }
@@ -243,7 +255,7 @@ private fun <T> ViewChips(options: List<T>, selected: T, label: (T) -> String, o
 private fun SliceDonut(slices: List<AllocationSlice>, label: (String) -> String) {
     DonutChart(
         slices.map { s ->
-            DonutSlice(label = label(s.key), weight = s.weight, value = s.valueEur.formatMoney(CurrencyCode.EUR, decimals = 0))
+            DonutSlice(label = label(s.key), weight = s.weight, value = s.valueEur.money(CurrencyCode.EUR, decimals = 0))
         },
     )
 }
@@ -273,7 +285,7 @@ private fun AllocationBars(rows: List<Pair<String, AllocationSlice>>) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.weight(1f))
-                    Caption(s.valueEur.formatMoney(CurrencyCode.EUR, decimals = 0) + "  ")
+                    Caption(s.valueEur.money(CurrencyCode.EUR, decimals = 0) + "  ")
                     Text(percents[i].formatPercent(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
                 WeightBar(s.weight, color = palette[i % palette.size])
@@ -289,9 +301,9 @@ fun HoldingRow(holding: Holding, weightPercent: Double? = null, onClick: () -> U
     InstrumentRow(
         ticker = a.symbol.ticker,
         title = a.name,
-        subtitle = "${holding.quantity.formatQuantity()} × ${holding.averagePrice.formatMoney(a.currency)}" +
+        subtitle = "${holding.quantity.formatQuantity()} × ${holding.averagePrice.money(a.currency)}" +
             (weightPercent?.let { " · " + it.formatPercent() } ?: ""),
-        trailingTop = holding.marketValue.formatMoney(a.currency),
+        trailingTop = holding.marketValue.money(a.currency),
         trailingBottom = {
             Text(
                 holding.unrealizedPnlPercent.formatSignedPercent(),
@@ -302,6 +314,7 @@ fun HoldingRow(holding: Holding, weightPercent: Double? = null, onClick: () -> U
         },
         trend = holding.unrealizedPnl,
         onClick = onClick,
+        logoUrl = stockLogoUrl(a.symbol, a.type),
     )
 }
 
@@ -322,16 +335,18 @@ fun PriceChartCard(
 ) {
     val perf = chart.performance
     val color = if (perf == null || perf.isPositive) FinOpsTheme.finance.gain else FinOpsTheme.finance.loss
+    // Cours dans la devise de cotation, tracés dans la devise d'affichage.
+    val factor = LocalMoney.current.factor(currency) ?: 1.0
     SectionCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp, horizontal = 12.dp)) {
         val scrubbed = scrubIndex?.let { chart.points.getOrNull(it) }
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(20.dp), verticalAlignment = Alignment.CenterVertically) {
             if (scrubbed != null) {
-                Text(scrubbed.y.formatMoney(currency), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                Text(scrubbed.y.money(currency), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
                 Caption(scrubbed.x.formatInstant(intraday = range.isIntraday))
             } else if (perf != null && !chart.loading) {
                 Caption(range.longLabel, Modifier.weight(1f))
                 Text(
-                    perf.absolute.formatSignedMoney(currency) + "  " + perf.percent.formatSignedPercent(),
+                    perf.absolute.signedMoney(currency) + "  " + perf.percent.formatSignedPercent(),
                     style = MaterialTheme.typography.labelLarge,
                     color = gainLossColor(perf.absolute),
                 )
@@ -344,10 +359,10 @@ fun PriceChartCard(
                 Caption(chart.error)
             }
             else -> LineChart(
-                points = chart.points,
+                points = chart.points.scaled(factor),
                 color = color,
-                baseline = baseline,
-                baselineText = if (baseline != null && baselineLabel != null) "$baselineLabel ${baseline.formatMoney(currency)}" else null,
+                baseline = baseline?.let { it * factor },
+                baselineText = if (baseline != null && baselineLabel != null) "$baselineLabel ${baseline.money(currency)}" else null,
                 scrubIndex = scrubIndex,
                 onScrub = onScrub,
                 contentDescription = "Cours sur ${range.longLabel}",
@@ -373,7 +388,7 @@ fun PositionsCard(holdings: List<Holding>, usdToEur: Double?, onOpen: (Holding) 
             val subtotalPercent = group.sumOf { percents[it] ?: 0.0 }
             Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(type.pluralLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-                Caption(subtotal.formatMoney(CurrencyCode.EUR, decimals = 0) + " · " + subtotalPercent.formatPercent())
+                Caption(subtotal.money(CurrencyCode.EUR, decimals = 0) + " · " + subtotalPercent.formatPercent())
             }
             group.forEachIndexed { i, h ->
                 if (i > 0) androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -382,3 +397,7 @@ fun PositionsCard(holdings: List<Holding>, usdToEur: Double?, onOpen: (Holding) 
         }
     }
 }
+
+/** Ordonnées multipliées par [factor] (conversion de devise). */
+private fun List<ChartPoint>.scaled(factor: Double): List<ChartPoint> =
+    if (factor == 1.0) this else map { it.copy(y = it.y * factor) }

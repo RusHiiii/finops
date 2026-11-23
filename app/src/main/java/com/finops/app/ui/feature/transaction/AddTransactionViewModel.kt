@@ -13,6 +13,9 @@ import com.finops.app.domain.model.TransactionSide
 import com.finops.app.domain.usecase.AddTransactionUseCase
 import com.finops.app.domain.usecase.GetAssetUseCase
 import com.finops.app.domain.usecase.GetInstrumentUseCase
+import com.finops.app.domain.usecase.GetTransactionUseCase
+import com.finops.app.domain.usecase.UpdateTransactionUseCase
+import com.finops.app.domain.model.Transaction
 import com.finops.app.domain.usecase.ObservePortfoliosUseCase
 import com.finops.app.domain.usecase.ObserveSettingsUseCase
 import kotlinx.coroutines.flow.map
@@ -43,6 +46,8 @@ data class TransactionForm(
     val price: String = "",
     val fees: String = "",
     val date: LocalDate,
+    /** Transaction modifiée (null : ajout). */
+    val transactionId: Long? = null,
     /** true si l'actif vient d'une position ou d'une fiche : champs de l'actif non modifiables. */
     val assetLocked: Boolean = false,
     val lookingUp: Boolean = false,
@@ -50,6 +55,8 @@ data class TransactionForm(
     val saved: Boolean = false,
     val error: String? = null,
 ) {
+    val editing: Boolean get() = transactionId != null
+
     /** Montant total (frais inclus pour un achat, déduits pour une vente) ; null si saisie incomplète. */
     val total: Double?
         get() {
@@ -67,6 +74,8 @@ class AddTransactionViewModel @Inject constructor(
     private val getAsset: GetAssetUseCase,
     private val getInstrument: GetInstrumentUseCase,
     private val addTransaction: AddTransactionUseCase,
+    private val getTransaction: GetTransactionUseCase,
+    private val updateTransaction: UpdateTransactionUseCase,
     clock: Clock,
     observeSettings: ObserveSettingsUseCase,
 ) : ViewModel() {
@@ -82,9 +91,37 @@ class AddTransactionViewModel @Inject constructor(
         .map { s -> CurrencyCode.entries.filter { it in s.currencies } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CurrencyCode.entries)
 
+    /** Transaction d'origine en modification (actif et id conservés). */
+    private var original: Transaction? = null
+
     init {
+        val transactionId = savedStateHandle.get<Long>(RouteArgs.TRANSACTION_ID) ?: RouteArgs.ALL
         val assetId = savedStateHandle.get<Long>(RouteArgs.ASSET_ID) ?: RouteArgs.ALL
-        if (assetId != RouteArgs.ALL) viewModelScope.launch {
+        if (transactionId != RouteArgs.ALL) viewModelScope.launch {
+            val t = getTransaction(transactionId) ?: run {
+                _form.update { it.copy(error = "Transaction introuvable") }
+                return@launch
+            }
+            original = t
+            val a = getAsset(t.assetId)
+            _form.update {
+                it.copy(
+                    transactionId = t.id,
+                    portfolioId = t.portfolioId,
+                    side = t.side,
+                    ticker = a?.symbol?.ticker.orEmpty(),
+                    exchange = a?.symbol?.exchange.orEmpty(),
+                    name = a?.name.orEmpty(),
+                    type = a?.type ?: it.type,
+                    currency = a?.currency ?: it.currency,
+                    quantity = t.quantity.toPlainString(),
+                    price = t.price.toPlainString(),
+                    fees = t.fees.takeIf { f -> f > 0 }?.toPlainString().orEmpty(),
+                    date = t.date,
+                    assetLocked = true,
+                )
+            }
+        } else if (assetId != RouteArgs.ALL) viewModelScope.launch {
             getAsset(assetId)?.let { a ->
                 _form.update {
                     it.copy(
@@ -167,9 +204,12 @@ class AddTransactionViewModel @Inject constructor(
             return
         }
         _form.update { it.copy(saving = true) }
+        val orig = original
         viewModelScope.launch {
             runSuspendCatching {
-                addTransaction(
+                if (orig != null) updateTransaction(
+                    orig.copy(portfolioId = f.portfolioId, side = f.side, quantity = qty!!, price = price!!, fees = fees!!, date = f.date)
+                ) else addTransaction(
                     TransactionDraft(
                         portfolioId = f.portfolioId,
                         symbol = symbol!!,
@@ -192,6 +232,9 @@ class AddTransactionViewModel @Inject constructor(
     }
 
     private companion object {
+        /** 12.5 → « 12.5 », 3.0 → « 3 » (pas de notation scientifique). */
+        fun Double.toPlainString(): String = java.math.BigDecimal.valueOf(this).stripTrailingZeros().toPlainString()
+
         fun initialForm(args: SavedStateHandle, today: LocalDate): TransactionForm {
             val ticker = args.get<String>(RouteArgs.TICKER)
             val exchange = args.get<String>(RouteArgs.EXCHANGE)

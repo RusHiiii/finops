@@ -27,8 +27,15 @@ fun Double.formatMoney(currencyCode: String?, decimals: Int = 2): String {
         this.currency = currency
         minimumFractionDigits = decimals
         maximumFractionDigits = decimals
+        // Le format français écrit « $US » ; seul le dollar américain est géré, « $ » suffit.
+        SHORT_SYMBOLS[currency.currencyCode]?.let { symbol ->
+            (this as? java.text.DecimalFormat)?.decimalFormatSymbols =
+                decimalFormatSymbols.apply { currencySymbol = symbol }
+        }
     }.format(this)
 }
+
+private val SHORT_SYMBOLS = mapOf("USD" to "$")
 
 fun Double.formatSignedMoney(currency: CurrencyCode): String = sign() + formatMoney(currency)
 
@@ -103,3 +110,8 @@ fun Double.formatAxis(): String = when {
     kotlin.math.abs(this) >= 100 -> String.format(LOCALE, "%.0f", this)
     else -> String.format(LOCALE, "%.2f", this)
 }
+
+private val DAY_HEADER = DateTimeFormatter.ofPattern("EEEE d MMMM", LOCALE)
+
+/** « Lundi 24 novembre ». */
+fun LocalDate.formatDayHeader(): String = format(DAY_HEADER).replaceFirstChar { it.titlecase(LOCALE) }

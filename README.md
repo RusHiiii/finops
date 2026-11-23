@@ -25,23 +25,30 @@ Données de marché : **Google Finance** (cours, historiques, recherche) et **ju
 - Plusieurs portefeuilles (PEA, CTO…), création, renommage, suppression.
 - Achats / ventes avec frais ; prix de revient unitaire (PRU) par la méthode du coût moyen pondéré ; plus-values latente et réalisée.
 - Contrôle des ventes (impossible de vendre plus que la quantité détenue à la date).
-- Historique des transactions groupé par mois, filtrable par portefeuille.
+- Historique des transactions groupé par mois, filtrable par portefeuille ; modification et suppression d'une transaction (menu ⋮).
 - Devises gérées : EUR et USD (conversion au taux USD/EUR courant).
 
 ### Fiches ETF / actions
-- Cours, variation, graphique sur 8 périodes, tableau des performances.
-- Labels d'identification (max. 3) et description courte.
+- Cours (avec contre-valeur en € si la devise n'est pas l'euro), variation, graphique sur 8 périodes, tableau des performances.
+- Labels d'identification (max. 3).
 - **Informations complémentaires** (ETF, via justETF) : taille du fonds, frais courants (TER), réplication, durabilité, couverture de change, date de création, distribution, domiciliation, émetteur, éligibilité PEA.
 - **Composition** (ETF) : 10 principales positions, principaux secteurs et pays.
 - **Aperçu des risques** : indicateur 1 à 7, volatilité et perte maximale sur 1, 3 et 5 ans (justETF, ou calculés sur l'historique Google pour les actions).
 
 ### Explorer et watchlist
 - Recherche par **nom, ticker ou ISIN** (ex. `Amundi MSCI World`, `CW8`, `FR0010315770`, `EPA:CW8`).
-- Watchlist des instruments suivis (étoile sur la fiche).
+- Watchlist des instruments suivis (étoile sur la fiche), séparée en sections ETF / Actions.
 
-### Paramètres
+### Actu
+- **Actualités** : articles Boursorama et Fortuneo des 2 derniers jours (via Google Actualités), ouverture de l'article au toucher.
+- **Résultats** : calendrier des publications de résultats des actions américaines de la watchlist (J-7 à J+35) : moment (avant ouverture / après clôture), BPA attendu, BPA publié et écart au consensus.
+
+### Paramètres (icône en haut à droite du Patrimoine)
+- **Sécurité** : verrouillage biométrique (empreinte, visage ou code du téléphone) à l'ouverture et après 30 s en arrière-plan ; désactivé par défaut.
+- **Notifications** : « Me notifier des résultats » — rappel la veille vers 18 h des publications de résultats des actions américaines de la watchlist (le vendredi pour le lundi).
 - Thème clair / sombre / système et 4 couleurs d'accent (Bleu, Émeraude, Violet, Corail).
 - Période par défaut des graphiques, actualisation des cours au lancement.
+- **Devise par défaut** (EUR ou USD) : Patrimoine et portefeuilles sont affichés dans cette devise, au taux du jour. Fiches, watchlist, recherche et transactions restent dans la devise d'origine ; l'en-tête des fiches ajoute la conversion en petit.
 - **Export / import** des données (JSON).
 
 ---
@@ -53,7 +60,7 @@ Données de marché : **Google Finance** (cours, historiques, recherche) et **ju
 2. L'installer : `adb install -r app-debug.apk`, ou copier le fichier sur le téléphone et l'ouvrir (autoriser les sources inconnues).
 
 ### Données de démonstration
-Le fichier [`samples/finops-demo.json`](samples/finops-demo.json) contient deux portefeuilles fictifs (PEA, CTO), 12 transactions et une watchlist sur de vrais instruments.
+Le fichier [`samples/finops-demo.json`](samples/finops-demo.json) contient deux portefeuilles fictifs : un **PEA** (ETF World, S&P 500, Émergents + Air Liquide et LVMH) et un **CTO** (Apple, Microsoft, Nvidia, Alphabet, avec une vente), 16 transactions et une petite watchlist.
 Import : **Paramètres → Données → Importer**. ⚠️ L'import remplace toutes les données existantes.
 
 ---
@@ -76,7 +83,7 @@ Prérequis :
 | Kotlin | 2.4.21 |
 | KSP | 2.3.14 |
 | compileSdk / targetSdk / minSdk | 36 / 36 / 26 |
-| Jetpack Compose (BOM) | 2024.12.01 |
+| Jetpack Compose (BOM) | 2025.06.00 |
 | Room | 2.8.5 |
 | Hilt | 2.60.1 |
 
@@ -126,7 +133,7 @@ Room, version 4. Toute évolution de schéma passe par une migration (`data/loca
 
 ## Sources de données et limites
 
-Aucune des deux sources ne propose d'API officielle : l'app décode leurs pages et appels internes. **Si un site change de format, la fonctionnalité concernée peut cesser de fonctionner** (le reste de l'app continue de marcher).
+Aucune de ces sources ne propose d'API officielle : l'app décode leurs pages et appels internes. **Si un site change de format, la fonctionnalité concernée peut cesser de fonctionner** (le reste de l'app continue de marcher).
 
 | Source | Usage |
 |---|---|
@@ -134,12 +141,16 @@ Aucune des deux sources ne propose d'API officielle : l'app décode leurs pages 
 | Google Finance (`batchexecute`, RPC `c2u4wc`) | Historiques sur 8 périodes |
 | Google Finance (`batchexecute`, RPC `mKsvE`) | Recherche (nom, ticker, ISIN) |
 | justETF (page de profil par ISIN) | Fiche, composition et risques des ETF |
+| Google Actualités (flux RSS) | Actualités boursières (Boursorama, Fortuneo) |
+| Financial Modeling Prep (images publiques) | Logos des actions |
+| Nasdaq (`api.nasdaq.com/api/calendar/earnings`) | Calendrier des résultats (sociétés américaines) |
 
 Limites connues :
 - **ISIN** : justETF fonctionne par ISIN, que Google ne fournit pas. Il est mémorisé automatiquement lors d'une recherche par ISIN, sinon saisi une fois via « Associer un ISIN » sur la fiche.
 - **Composition** : justETF publie les 4 premiers secteurs / pays ; le reste est regroupé en « Autre ».
 - **Change** : la courbe d'historique applique le taux USD/EUR courant à toute la période.
 - **Devises** : seules EUR et USD sont gérées pour les positions.
+- **Résultats** : uniquement les sociétés cotées aux États-Unis (pas de source gratuite fiable pour l'Europe).
 
 ---
 

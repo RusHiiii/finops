@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.finops.app.common.runSuspendCatching
 import com.finops.app.domain.model.SearchResult
 import com.finops.app.domain.model.Symbol
+import com.finops.app.domain.model.AssetType
 import com.finops.app.domain.model.CurrencyCode
 import com.finops.app.domain.usecase.ObserveSettingsUseCase
 import com.finops.app.domain.usecase.SearchInstrumentsUseCase
@@ -34,17 +35,17 @@ data class ExploreUiState(
 }
 
 /** Instruments populaires proposés avant toute recherche. */
-data class Suggestion(val symbol: Symbol, val name: String, val currency: CurrencyCode)
+data class Suggestion(val symbol: Symbol, val name: String, val currency: CurrencyCode, val type: AssetType = AssetType.ETF)
 
 val SUGGESTIONS = listOf(
     Suggestion(Symbol("CW8", "EPA"), "Amundi MSCI World", CurrencyCode.EUR),
     Suggestion(Symbol("EWLD", "EPA"), "Amundi PEA MSCI World", CurrencyCode.EUR),
     Suggestion(Symbol("ESE", "EPA"), "BNP Paribas Easy S&P 500", CurrencyCode.EUR),
     Suggestion(Symbol("PAEEM", "EPA"), "Amundi PEA Emergents", CurrencyCode.EUR),
-    Suggestion(Symbol("MC", "EPA"), "LVMH", CurrencyCode.EUR),
-    Suggestion(Symbol("AI", "EPA"), "Air Liquide", CurrencyCode.EUR),
-    Suggestion(Symbol("AAPL", "NASDAQ"), "Apple", CurrencyCode.USD),
-    Suggestion(Symbol("NVDA", "NASDAQ"), "NVIDIA", CurrencyCode.USD),
+    Suggestion(Symbol("MC", "EPA"), "LVMH", CurrencyCode.EUR, AssetType.STOCK),
+    Suggestion(Symbol("AI", "EPA"), "Air Liquide", CurrencyCode.EUR, AssetType.STOCK),
+    Suggestion(Symbol("AAPL", "NASDAQ"), "Apple", CurrencyCode.USD, AssetType.STOCK),
+    Suggestion(Symbol("NVDA", "NASDAQ"), "NVIDIA", CurrencyCode.USD, AssetType.STOCK),
 )
 
 @HiltViewModel

@@ -19,10 +19,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
-/** Informations dérivées d'une fiche : labels, description courte, fiche fonds, risques. */
+/** Informations dérivées d'une fiche : labels, fiche fonds, risques. */
 data class InstrumentInsights(
     val labels: List<String>,
-    val summary: String?,
     val isin: Isin?,
     /** null si ISIN inconnu, action, ou fiche indisponible (voir [fundError]). */
     val fund: FundProfile?,
@@ -58,7 +57,6 @@ class GetInstrumentInsightsUseCase @Inject constructor(
         val risk = fund?.risk?.takeIf { it.volatility.isNotEmpty() } ?: computedRisk(snapshot.symbol)
         InstrumentInsights(
             labels = InstrumentLabels.labels(snapshot, fund),
-            summary = InstrumentLabels.summary(snapshot, fund),
             isin = isin,
             fund = fund,
             fundError = fundResult.exceptionOrNull()?.message

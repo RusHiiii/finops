@@ -12,6 +12,7 @@ import com.finops.app.domain.usecase.DeleteAllDataUseCase
 import com.finops.app.domain.usecase.ExportDataUseCase
 import com.finops.app.domain.usecase.ImportDataUseCase
 import com.finops.app.domain.usecase.ObserveSettingsUseCase
+import com.finops.app.domain.usecase.SetEarningsNotificationsUseCase
 import com.finops.app.ui.common.userMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,7 @@ class SettingsViewModel @Inject constructor(
     private val exportData: ExportDataUseCase,
     private val importData: ImportDataUseCase,
     private val deleteAllData: DeleteAllDataUseCase,
+    private val setEarningsNotifications: SetEarningsNotificationsUseCase,
     private val clock: Clock,
 ) : ViewModel() {
     val settings: StateFlow<AppSettings> =
@@ -76,6 +78,27 @@ class SettingsViewModel @Inject constructor(
     fun setAccent(accent: AccentColor) = update { it.copy(accent = accent) }
     fun setDefaultRange(range: ChartRange) = update { it.copy(defaultRange = range) }
     fun setRefreshOnLaunch(enabled: Boolean) = update { it.copy(refreshOnLaunch = enabled) }
+
+    fun setBiometricLock(enabled: Boolean) = update { it.copy(biometricLock = enabled) }
+
+    fun onBiometricUnavailable() {
+        _message.value = "Configurez une empreinte, un visage ou un code de verrouillage sur le téléphone pour activer cette option."
+    }
+
+    fun onBiometricError(error: String?) {
+        error?.let { _message.value = it }
+    }
+
+    fun setNotifyEarnings(enabled: Boolean) {
+        viewModelScope.launch { setEarningsNotifications(enabled) }
+    }
+
+    /** Autorisation de notifier refusée par l'utilisateur. */
+    fun onNotificationPermissionDenied() {
+        _message.value = "Autorisez les notifications de FinOps dans les réglages du téléphone pour recevoir les rappels."
+    }
+
+    fun setDisplayCurrency(currency: CurrencyCode) = update { it.copy(displayCurrency = currency) }
 
     /** Active / désactive une devise ; au moins une devise reste toujours suivie. */
     fun setCurrency(currency: CurrencyCode, enabled: Boolean) = update {

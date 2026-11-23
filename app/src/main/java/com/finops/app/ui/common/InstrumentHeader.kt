@@ -42,17 +42,20 @@ fun InstrumentHeroHeader(
     subtitle: String,
     amount: String,
     modifier: Modifier = Modifier,
+    /** Contre-valeur dans la devise par défaut, affichée en petit à côté du montant (devise ≠ devise par défaut). */
+    convertedAmount: String? = null,
     labels: List<String> = emptyList(),
     changePercent: Double? = null,
     changeText: String? = null,
     footer: String? = null,
+    logoUrl: String? = null,
 ) {
     val onHero = FinOpsTheme.finance.onHero
     val soft = onHero.copy(alpha = 0.85f)
     HeroCard(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                AssetAvatar(ticker, size = 44.dp)
+                AssetAvatar(ticker, size = 44.dp, logoUrl = logoUrl)
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -65,7 +68,12 @@ fun InstrumentHeroHeader(
             HeroLabels(labels)
         }
         Spacer(Modifier.height(8.dp))
-        Text(amount, style = HeroAmountStyle, color = onHero)
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(amount, style = HeroAmountStyle, color = onHero, modifier = Modifier.alignByBaseline())
+            convertedAmount?.let {
+                Text(it, style = MaterialTheme.typography.titleMedium, color = soft, modifier = Modifier.alignByBaseline())
+            }
+        }
         if (changePercent != null || changeText != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 changePercent?.let { HeroChangeBadge(it) }

@@ -1,5 +1,11 @@
 package com.finops.app.ui.feature.settings
 
+import android.Manifest
+import androidx.fragment.app.FragmentActivity
+import com.finops.app.ui.security.Biometrics
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -30,6 +36,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -82,7 +90,7 @@ import com.finops.app.ui.designsystem.SectionCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
@@ -98,6 +106,30 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { pendingImport = it.toString() }
     }
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) vm.setNotifyEarnings(true) else vm.onNotificationPermissionDenied()
+    }
+    // Activer comme désactiver le verrou exige de s'authentifier (sauf si l'appareil n'a plus de verrouillage).
+    val onBiometricLock: (Boolean) -> Unit = { enabled ->
+        val activity = context as FragmentActivity
+        when {
+            Biometrics.isAvailable(activity) -> Biometrics.authenticate(
+                activity,
+                title = if (enabled) "Activer le verrouillage" else "Désactiver le verrouillage",
+                onSuccess = { vm.setBiometricLock(enabled) },
+                onError = vm::onBiometricError,
+            )
+            enabled -> vm.onBiometricUnavailable()
+            // Verrouillage d'écran retiré du téléphone : désactivation sans authentification possible.
+            else -> vm.setBiometricLock(false)
+        }
+    }
+    val onNotifyEarnings: (Boolean) -> Unit = { enabled ->
+        val needsPermission = enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.setNotifyEarnings(enabled)
+    }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = Color.Transparent,
@@ -105,6 +137,9 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         topBar = {
             TopAppBar(
                 title = { Text("Paramètres") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
             )
         },
@@ -139,7 +174,21 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 }
             }
             item {
-                SectionCard(title = "Devises suivies") {
+                SectionCard(title = "Devises") {
+                    Text("Devise par défaut", style = MaterialTheme.typography.bodyLarge)
+                    Caption("Tous les montants sont affichés dans cette devise, au taux du jour. Les fiches indiquent aussi le montant dans la devise d'origine.")
+                    Spacer(Modifier.height(8.dp))
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        CurrencyCode.entries.forEachIndexed { i, c ->
+                            SegmentedButton(
+                                selected = settings.displayCurrency == c,
+                                onClick = { vm.setDisplayCurrency(c) },
+                                shape = SegmentedButtonDefaults.itemShape(i, CurrencyCode.entries.size),
+                            ) { Text(c.name) }
+                        }
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    Text("Devises suivies", style = MaterialTheme.typography.bodyLarge)
                     Caption("Seuls les ETF et actions dans ces devises apparaissent dans la recherche et peuvent être ajoutés à un portefeuille.")
                     Spacer(Modifier.height(4.dp))
                     CurrencyCode.entries.forEach { c ->
@@ -156,6 +205,30 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                         }
                     }
                     Caption("Au moins une devise doit rester cochée. Les positions déjà détenues restent affichées.")
+                }
+            }
+            item {
+                SectionCard(title = "Sécurité") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Activer le verrouillage biométrique", style = MaterialTheme.typography.bodyLarge)
+                            Caption("Empreinte, visage ou code du téléphone à l'ouverture de l'app et après 30 s en arrière-plan.")
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Switch(checked = settings.biometricLock, onCheckedChange = onBiometricLock)
+                    }
+                }
+            }
+            item {
+                SectionCard(title = "Notifications") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Me notifier des résultats", style = MaterialTheme.typography.bodyLarge)
+                            Caption("La veille vers 18 h, pour les actions américaines de la watchlist qui publient leurs résultats (le vendredi pour le lundi).")
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Switch(checked = settings.notifyEarnings, onCheckedChange = onNotifyEarnings)
+                    }
                 }
             }
             item {

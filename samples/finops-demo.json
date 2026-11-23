@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1795161600000,
+  "exportedAt": 1795176000000,
   "portfolios": [
     {
       "id": 1,
       "name": "PEA",
-      "createdAt": 1709280000000
+      "createdAt": 1735776000000
     },
     {
       "id": 2,
       "name": "CTO",
-      "createdAt": 1714546800000
+      "createdAt": 1736899200000
     }
   ],
   "assets": [
@@ -24,30 +24,38 @@
     },
     {
       "id": 2,
-      "ticker": "DCAM",
+      "ticker": "ESE",
       "exchange": "EPA",
-      "name": "Amundi PEA Monde (MSCI World) UCITS ETF Acc",
+      "name": "BNP Paribas Easy S&P 500 UCITS ETF EUR C",
       "type": "ETF",
       "currency": "EUR"
     },
     {
       "id": 3,
-      "ticker": "WPEA",
+      "ticker": "PAEEM",
       "exchange": "EPA",
-      "name": "iShares MSCI World Swap PEA UCITS ETF EUR (Acc)",
+      "name": "Amundi PEA Emergents (MSCI EM) UCITS ETF Acc",
       "type": "ETF",
       "currency": "EUR"
     },
     {
       "id": 4,
-      "ticker": "IWDA",
-      "exchange": "AMS",
-      "name": "iShares Core MSCI World UCITS ETF USD (Acc)",
-      "type": "ETF",
+      "ticker": "AI",
+      "exchange": "EPA",
+      "name": "Air Liquide",
+      "type": "STOCK",
       "currency": "EUR"
     },
     {
       "id": 5,
+      "ticker": "MC",
+      "exchange": "EPA",
+      "name": "LVMH Moet Hennessy Louis Vuitton SE",
+      "type": "STOCK",
+      "currency": "EUR"
+    },
+    {
+      "id": 6,
       "ticker": "AAPL",
       "exchange": "NASDAQ",
       "name": "Apple Inc",
@@ -55,11 +63,27 @@
       "currency": "USD"
     },
     {
-      "id": 6,
-      "ticker": "VOO",
-      "exchange": "NYSEARCA",
-      "name": "Vanguard S&P 500 ETF",
-      "type": "ETF",
+      "id": 7,
+      "ticker": "MSFT",
+      "exchange": "NASDAQ",
+      "name": "Microsoft Corp",
+      "type": "STOCK",
+      "currency": "USD"
+    },
+    {
+      "id": 8,
+      "ticker": "NVDA",
+      "exchange": "NASDAQ",
+      "name": "NVIDIA Corp",
+      "type": "STOCK",
+      "currency": "USD"
+    },
+    {
+      "id": 9,
+      "ticker": "GOOGL",
+      "exchange": "NASDAQ",
+      "name": "Alphabet Inc Class A",
+      "type": "STOCK",
       "currency": "USD"
     }
   ],
@@ -69,168 +93,208 @@
       "portfolioId": 1,
       "assetId": 1,
       "side": "BUY",
-      "quantity": 5.0,
-      "price": 470.0,
+      "quantity": 1.0,
+      "price": 540.0,
       "fees": 1.99,
-      "date": "2024-03-15"
+      "date": "2025-01-10"
     },
     {
       "id": 2,
       "portfolioId": 1,
-      "assetId": 1,
+      "assetId": 2,
       "side": "BUY",
-      "quantity": 3.0,
-      "price": 540.0,
+      "quantity": 30.0,
+      "price": 26.8,
       "fees": 1.99,
-      "date": "2024-11-12"
+      "date": "2025-02-14"
     },
     {
       "id": 3,
       "portfolioId": 1,
-      "assetId": 1,
+      "assetId": 3,
       "side": "BUY",
-      "quantity": 2.0,
-      "price": 585.0,
+      "quantity": 40.0,
+      "price": 24.9,
       "fees": 1.99,
-      "date": "2025-06-02"
+      "date": "2025-03-12"
     },
     {
       "id": 4,
       "portfolioId": 1,
       "assetId": 1,
-      "side": "SELL",
+      "side": "BUY",
       "quantity": 1.0,
-      "price": 640.0,
+      "price": 585.0,
       "fees": 1.99,
-      "date": "2026-02-10"
+      "date": "2025-06-16"
     },
     {
       "id": 5,
       "portfolioId": 1,
-      "assetId": 2,
+      "assetId": 4,
       "side": "BUY",
-      "quantity": 300.0,
-      "price": 5.1,
-      "fees": 0.99,
-      "date": "2025-01-15"
+      "quantity": 5.0,
+      "price": 172.5,
+      "fees": 1.99,
+      "date": "2025-04-08"
     },
     {
       "id": 6,
       "portfolioId": 1,
-      "assetId": 2,
+      "assetId": 5,
       "side": "BUY",
-      "quantity": 200.0,
-      "price": 5.55,
-      "fees": 0.99,
-      "date": "2025-09-10"
+      "quantity": 2.0,
+      "price": 640.0,
+      "fees": 1.99,
+      "date": "2025-03-03"
     },
     {
       "id": 7,
       "portfolioId": 1,
-      "assetId": 3,
+      "assetId": 2,
       "side": "BUY",
-      "quantity": 400.0,
-      "price": 6.2,
-      "fees": 0.99,
-      "date": "2026-03-05"
+      "quantity": 20.0,
+      "price": 30.1,
+      "fees": 1.99,
+      "date": "2025-09-15"
     },
     {
       "id": 8,
-      "portfolioId": 2,
-      "assetId": 4,
+      "portfolioId": 1,
+      "assetId": 1,
       "side": "BUY",
-      "quantity": 20.0,
-      "price": 92.5,
-      "fees": 2.0,
-      "date": "2024-05-20"
+      "quantity": 1.0,
+      "price": 630.0,
+      "fees": 1.99,
+      "date": "2026-02-16"
     },
     {
       "id": 9,
-      "portfolioId": 2,
-      "assetId": 4,
+      "portfolioId": 1,
+      "assetId": 3,
       "side": "BUY",
-      "quantity": 15.0,
-      "price": 98.3,
-      "fees": 2.0,
-      "date": "2025-04-08"
+      "quantity": 30.0,
+      "price": 28.4,
+      "fees": 1.99,
+      "date": "2026-05-11"
     },
     {
       "id": 10,
-      "portfolioId": 2,
+      "portfolioId": 1,
       "assetId": 5,
       "side": "BUY",
-      "quantity": 10.0,
-      "price": 218.0,
-      "fees": 1.0,
-      "date": "2024-08-01"
+      "quantity": 2.0,
+      "price": 455.0,
+      "fees": 1.99,
+      "date": "2026-06-22"
     },
     {
       "id": 11,
       "portfolioId": 2,
-      "assetId": 5,
+      "assetId": 6,
       "side": "BUY",
-      "quantity": 5.0,
-      "price": 280.0,
+      "quantity": 3.0,
+      "price": 228.0,
       "fees": 1.0,
-      "date": "2025-12-01"
+      "date": "2025-01-21"
     },
     {
       "id": 12,
       "portfolioId": 2,
-      "assetId": 6,
+      "assetId": 7,
+      "side": "BUY",
+      "quantity": 2.0,
+      "price": 410.0,
+      "fees": 1.0,
+      "date": "2025-02-05"
+    },
+    {
+      "id": 13,
+      "portfolioId": 2,
+      "assetId": 8,
+      "side": "BUY",
+      "quantity": 8.0,
+      "price": 118.0,
+      "fees": 1.0,
+      "date": "2025-04-22"
+    },
+    {
+      "id": 14,
+      "portfolioId": 2,
+      "assetId": 9,
       "side": "BUY",
       "quantity": 4.0,
-      "price": 510.0,
+      "price": 165.0,
       "fees": 1.0,
-      "date": "2025-03-14"
+      "date": "2025-05-06"
+    },
+    {
+      "id": 15,
+      "portfolioId": 2,
+      "assetId": 8,
+      "side": "SELL",
+      "quantity": 3.0,
+      "price": 182.0,
+      "fees": 1.0,
+      "date": "2025-12-08"
+    },
+    {
+      "id": 16,
+      "portfolioId": 2,
+      "assetId": 6,
+      "side": "BUY",
+      "quantity": 2.0,
+      "price": 265.0,
+      "fees": 1.0,
+      "date": "2026-03-10"
     }
   ],
   "watchlist": [
     {
-      "ticker": "MC",
+      "ticker": "TTE",
       "exchange": "EPA",
-      "name": "LVMH Moet Hennessy Louis Vuitton SE",
+      "name": "TotalEnergies SE",
       "type": "STOCK",
       "currency": "EUR",
-      "addedAt": 1788246000000
+      "addedAt": 1788220800000
     },
     {
-      "ticker": "NVDA",
+      "ticker": "AMZN",
       "exchange": "NASDAQ",
-      "name": "NVIDIA Corp",
+      "name": "Amazon.com Inc",
       "type": "STOCK",
       "currency": "USD",
-      "addedAt": 1790838000000
+      "addedAt": 1791158400000
     },
     {
-      "ticker": "WLD",
+      "ticker": "WPEA",
       "exchange": "EPA",
-      "name": "Amundi MSCI World Swap II UCITS ETF Dist",
+      "name": "iShares MSCI World Swap PEA UCITS ETF EUR (Acc)",
       "type": "ETF",
       "currency": "EUR",
-      "addedAt": 1793520000000
+      "addedAt": 1793577600000
     }
   ],
   "isins": [
-    {
-      "ticker": "IWDA",
-      "exchange": "AMS",
-      "isin": "IE00B4L5Y983"
-    },
     {
       "ticker": "CW8",
       "exchange": "EPA",
       "isin": "LU1681043599"
     },
     {
-      "ticker": "AAPL",
-      "exchange": "NASDAQ",
-      "isin": "US0378331005"
+      "ticker": "ESE",
+      "exchange": "EPA",
+      "isin": "FR0011550185"
     },
     {
-      "ticker": "WLD",
+      "ticker": "PAEEM",
       "exchange": "EPA",
-      "isin": "FR0010315770"
+      "isin": "FR0013412020"
+    },
+    {
+      "ticker": "AI",
+      "exchange": "EPA",
+      "isin": "FR0000120073"
     },
     {
       "ticker": "MC",

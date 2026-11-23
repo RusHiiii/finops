@@ -6,8 +6,11 @@ import com.finops.app.common.IoDispatcher
 import com.finops.app.data.local.AppDatabase
 import com.finops.app.data.local.ContentResolverDocumentStorage
 import com.finops.app.data.remote.HttpClient
+import com.finops.app.data.work.WorkManagerEarningsReminderScheduler
 import com.finops.app.data.remote.UrlConnectionHttpClient
 import com.finops.app.data.repository.GoogleFinanceMarketRepository
+import com.finops.app.data.repository.GoogleNewsRepository
+import com.finops.app.data.repository.NasdaqEarningsRepository
 import com.finops.app.data.repository.JustEtfFundRepository
 import com.finops.app.data.repository.PreferencesSettingsRepository
 import com.finops.app.data.repository.RoomBackupRepository
@@ -16,6 +19,9 @@ import com.finops.app.data.repository.OfflineFirstPortfolioRepository
 import com.finops.app.data.repository.RoomWatchlistRepository
 import com.finops.app.domain.repository.BackupRepository
 import com.finops.app.domain.repository.DocumentStorage
+import com.finops.app.domain.repository.EarningsRepository
+import com.finops.app.domain.repository.EarningsReminderScheduler
+import com.finops.app.domain.repository.NewsRepository
 import com.finops.app.domain.repository.FundRepository
 import com.finops.app.domain.repository.IsinRepository
 import com.finops.app.domain.repository.MarketRepository
@@ -82,4 +88,13 @@ abstract class DataModule {
 
     @Binds
     abstract fun documentStorage(impl: ContentResolverDocumentStorage): DocumentStorage
+
+    @Binds
+    abstract fun newsRepository(impl: GoogleNewsRepository): NewsRepository
+
+    @Binds
+    abstract fun earningsRepository(impl: NasdaqEarningsRepository): EarningsRepository
+
+    @Binds
+    abstract fun earningsReminderScheduler(impl: WorkManagerEarningsReminderScheduler): EarningsReminderScheduler
 }

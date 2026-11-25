@@ -41,7 +41,9 @@ import com.finops.app.domain.model.ChartRange
 import com.finops.app.domain.model.CurrencyCode
 import com.finops.app.domain.model.Holding
 import com.finops.app.domain.model.PortfolioSummary
+import com.finops.app.domain.calculator.Classification
 import com.finops.app.domain.calculator.InstrumentLabels
+import com.finops.app.ui.designsystem.WorldMap
 import com.finops.app.domain.calculator.PortfolioCalculator
 import com.finops.app.ui.designsystem.Caption
 import com.finops.app.ui.designsystem.DonutChart
@@ -187,7 +189,7 @@ fun SummaryCard(summary: PortfolioSummary) {
 
 enum class AllocationView(val label: String) { ASSET("Ligne"), TYPE("Type"), CURRENCY("Devise") }
 
-enum class ExposureView(val label: String) { SECTOR("Secteur"), COUNTRY("Pays") }
+enum class ExposureView(val label: String) { SECTOR("Secteur"), COUNTRY("Pays"), MAP("Carte") }
 
 /** Exposition sectorielle / géographique, chargée en arrière-plan (réseau). */
 data class ExposureState(val loading: Boolean = true, val exposure: Exposure? = null)
@@ -223,7 +225,7 @@ fun ExposureCard(exposure: ExposureState) {
     val e = exposure.exposure
     val slices = when (view) {
         ExposureView.SECTOR -> shortSectors(e?.bySector.orEmpty())
-        ExposureView.COUNTRY -> e?.byCountry.orEmpty()
+        ExposureView.COUNTRY, ExposureView.MAP -> e?.byCountry.orEmpty()
     }
     SectionCard(title = "Exposition") {
         ViewChips(ExposureView.entries, view, { it.label }) { view = it }
@@ -232,7 +234,11 @@ fun ExposureCard(exposure: ExposureState) {
             exposure.loading -> LoadingBox(height = 132.dp)
             slices.isEmpty() -> Caption("Exposition indisponible pour le moment.")
             else -> {
-                SliceDonut(grouped(slices)) { it }
+                if (view == ExposureView.MAP) {
+                    WorldMap(remember(slices) { slices.associate { it.key to it.weight } })
+                } else {
+                    SliceDonut(grouped(slices)) { it }
+                }
                 if (e != null && e.coverage < 0.999) {
                     Spacer(Modifier.height(8.dp))
                     Caption(
@@ -249,7 +255,7 @@ fun ExposureCard(exposure: ExposureState) {
 private fun shortSectors(raw: List<AllocationSlice>): List<AllocationSlice> =
     raw.groupBy { InstrumentLabels.short(it.key) }
         .map { (key, s) -> AllocationSlice(key, s.sumOf { it.valueEur }, s.sumOf { it.weight }) }
-        .sortedByDescending { it.weight }
+        .sortedWith(compareBy<AllocationSlice> { it.key == Classification.UNCLASSIFIED || it.key == Classification.OTHER }.thenByDescending { it.weight })
 
 @Composable
 private fun <T> ViewChips(options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {

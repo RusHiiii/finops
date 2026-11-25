@@ -24,7 +24,7 @@ object InstrumentLabels {
         return listOfNotNull(type, country, sector(snapshot, fund)).take(MAX)
     }
 
-    /** Libellés courts pour les labels (les noms complets restent utilisés dans l'exposition). */
+    /** Libellés courts des secteurs (labels d'instrument, légende de l'exposition). */
     private val SHORT_SECTORS = mapOf(
         "Matériaux non énergétiques" to "Matériaux",
         "Biens de consommation cycliques" to "Conso. cyclique",
@@ -37,7 +37,7 @@ object InstrumentLabels {
         "Services aux consommateurs" to "Services",
     )
 
-    private fun short(sector: String) = SHORT_SECTORS[sector] ?: sector
+    fun short(sector: String) = SHORT_SECTORS[sector] ?: sector
 
     /** Seuil au-delà duquel un ETF est considéré comme sectoriel. */
     private const val SECTOR_FUND_THRESHOLD = 50.0

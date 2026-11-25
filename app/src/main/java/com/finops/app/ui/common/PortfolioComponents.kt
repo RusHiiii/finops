@@ -41,6 +41,7 @@ import com.finops.app.domain.model.ChartRange
 import com.finops.app.domain.model.CurrencyCode
 import com.finops.app.domain.model.Holding
 import com.finops.app.domain.model.PortfolioSummary
+import com.finops.app.domain.calculator.InstrumentLabels
 import com.finops.app.domain.calculator.PortfolioCalculator
 import com.finops.app.ui.designsystem.Caption
 import com.finops.app.ui.designsystem.DonutChart
@@ -206,7 +207,7 @@ fun AllocationCard(allocation: Allocation, holdings: List<Holding>) {
         Spacer(Modifier.height(12.dp))
         when {
             slices.isEmpty() -> Caption("Aucune position ouverte.")
-            view == AllocationView.ASSET -> AllocationBars(grouped(slices).map { (names[it.key] ?: it.key) to it })
+            view == AllocationView.ASSET -> AllocationBars(grouped(slices, MAX_ASSET_ROWS).map { (names[it.key] ?: it.key) to it })
             else -> SliceDonut(grouped(slices)) { names[it] ?: allocationLabel(it) }
         }
     }
@@ -221,7 +222,7 @@ fun ExposureCard(exposure: ExposureState) {
     var view by rememberSaveable { mutableStateOf(ExposureView.SECTOR) }
     val e = exposure.exposure
     val slices = when (view) {
-        ExposureView.SECTOR -> e?.bySector.orEmpty()
+        ExposureView.SECTOR -> shortSectors(e?.bySector.orEmpty())
         ExposureView.COUNTRY -> e?.byCountry.orEmpty()
     }
     SectionCard(title = "Exposition") {
@@ -244,6 +245,12 @@ fun ExposureCard(exposure: ExposureState) {
     }
 }
 
+/** Libellés courts des secteurs ; fusionne ceux qui partagent un libellé (ex. « Services »). */
+private fun shortSectors(raw: List<AllocationSlice>): List<AllocationSlice> =
+    raw.groupBy { InstrumentLabels.short(it.key) }
+        .map { (key, s) -> AllocationSlice(key, s.sumOf { it.valueEur }, s.sumOf { it.weight }) }
+        .sortedByDescending { it.weight }
+
 @Composable
 private fun <T> ViewChips(options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -261,18 +268,19 @@ private fun SliceDonut(slices: List<AllocationSlice>, label: (String) -> String)
 }
 
 /**
- * Au plus [MAX_ROWS] lignes nommées ; le reste (et une éventuelle ligne « Autre » existante)
+ * Au plus [max] lignes nommées ; le reste (et une éventuelle ligne « Autre » existante)
  * est fusionné dans une seule ligne « Autre », placée en dernier.
  */
-private fun grouped(raw: List<AllocationSlice>): List<AllocationSlice> {
+private fun grouped(raw: List<AllocationSlice>, max: Int = MAX_ROWS): List<AllocationSlice> {
     val (other, named) = raw.partition { it.key == OTHER || it.key == "Autres" }
-    if (named.size <= MAX_ROWS && other.size <= 1) return named + other
-    val rest = named.drop(MAX_ROWS) + other
+    if (named.size <= max && other.size <= 1) return named + other
+    val rest = named.drop(max) + other
     val merged = AllocationSlice(OTHER, rest.sumOf { it.valueEur }, rest.sumOf { it.weight })
-    return named.take(MAX_ROWS) + listOfNotNull(merged.takeIf { rest.isNotEmpty() })
+    return named.take(max) + listOfNotNull(merged.takeIf { rest.isNotEmpty() })
 }
 
 private const val MAX_ROWS = 4
+private const val MAX_ASSET_ROWS = 6
 private const val OTHER = "Autre"
 
 /** Répartition par ligne : barres horizontales avec poids et montant. */

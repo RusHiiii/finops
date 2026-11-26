@@ -288,6 +288,9 @@ private fun grouped(raw: List<AllocationSlice>, max: Int = MAX_ROWS): List<Alloc
 private const val MAX_ROWS = 4
 private const val MAX_ASSET_ROWS = 6
 private const val OTHER = "Autre"
+private const val MAX_LABEL_CHARS = 30
+
+private fun String.ellipsize(max: Int): String = if (length <= max) this else take(max).trimEnd() + "..."
 
 /** Répartition par ligne : barres horizontales avec poids et montant. */
 @Composable
@@ -298,7 +301,7 @@ private fun AllocationBars(rows: List<Pair<String, AllocationSlice>>) {
         rows.forEachIndexed { i, (label, s) ->
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.weight(1f))
+                    Text(label.ellipsize(MAX_LABEL_CHARS), style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.weight(1f))
                     Caption(s.valueEur.money(CurrencyCode.EUR, decimals = 0) + "  ")
                     Text(percents[i].formatPercent(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
